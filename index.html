@@ -1,293 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Editor - Add Text</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        
-        /* Layout */
-        .toolbar { margin-bottom: 20px; display: flex; gap: 10px; }
-        .editor-container { position: relative; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: white; }
-        
-        /* Canvases: Layered on top of each other */
-        canvas { display: block; }
-        #text-layer { position: absolute; top: 0; left: 0; pointer-events: none; } /* Text sits on top */
-
-        /* UI Card for Controls */
-        .ui-card {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            width: 280px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: none; /* Hidden by default */
-            z-index: 100;
-        }
-
-        .ui-card h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .control-group { margin-bottom: 12px; }
-        .control-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #555; }
-        .control-group input, .control-group select { width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-        .btn { padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn:hover { background: #0056b3; }
-        .btn-green { background: #28a745; }
-        .btn-green:hover { background: #1e7e34; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Simple PDF Editor (Vanilla JS)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    #controls { margin-bottom: 1em; }
+    #text-controls { margin-top: 1em; margin-bottom: 1em;}
+    .text-item { padding: 1em; border: 1px solid #ccc; margin-bottom: 0.5em; }
+    .inline { display: inline-block; margin-right: 1em; }
+    #pdf-canvas { border: 1px solid #333; background: #f8f8f8; }
+    label { margin-right: 0.5em; }
+    input[type="color"] { vertical-align: middle; }
+  </style>
 </head>
 <body>
+  <h2>Simple PDF Editor (Live Preview)</h2>
+  <div id="controls">
+    <input type="file" id="pdf-upload" accept="application/pdf">
+    <button id="add-text-btn" disabled>Add Text</button>
+  </div>
 
-    <div class="toolbar">
-        <input type="file" id="pdf-upload" accept="application/pdf">
-        <button class="btn" id="add-text-btn" disabled>+ Add Text</button>
-        <button class="btn btn-green" id="export-btn" disabled>Export PDF</button>
-    </div>
+  <div id="text-controls"></div>
 
-    <div id="canvas-wrapper" class="editor-container">
-        <canvas id="pdf-render"></canvas>
-        <canvas id="text-layer"></canvas>
-    </div>
+  <h3>Live Preview (First Page)</h3>
+  <canvas id="pdf-canvas" width="600" height="800"></canvas>
 
-    <div class="ui-card" id="settings-card">
-        <h3>Text Properties</h3>
-        
-        <div class="control-group">
-            <label>Text Content</label>
-            <input type="text" id="input-text" value="Hello World">
-        </div>
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+  <script>
+    // PDF.js worker setup:
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
 
-        <div class="control-group">
-            <label>Font Size</label>
-            <input type="number" id="input-size" value="24">
-        </div>
+    const pdfUpload = document.getElementById('pdf-upload');
+    const addTextBtn = document.getElementById('add-text-btn');
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+    const textCtrls = document.getElementById('text-controls');
 
-        <div class="control-group">
-            <label>Color (Hex)</label>
-            <input type="color" id="input-color" value="#ff0000">
-        </div>
+    let pdfDoc = null, pageNum = 1, page = null, renderScale = 1.5, pdfWidth=0, pdfHeight=0, renderTask = null;
+    let textOverlays = [];
 
-        <div class="control-group">
-            <label>Position X</label>
-            <input type="number" id="input-x" value="50">
-        </div>
-
-        <div class="control-group">
-            <label>Position Y</label>
-            <input type="number" id="input-y" value="50">
-        </div>
-
-        <div class="control-group">
-            <label>Anchor Mode</label>
-            <select id="input-anchor">
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
-            </select>
-        </div>
-    </div>
-
-    <script>
-        // -- Variables --
-        let pdfDoc = null;
-        let pdfBytes = null; // Store raw bytes for export
-        let pageScale = 1.0; // Assume 1:1 for simplicity initially
-        
-        // DOM Elements
-        const uploadInput = document.getElementById('pdf-upload');
-        const pdfCanvas = document.getElementById('pdf-render');
-        const textCanvas = document.getElementById('text-layer');
-        const uiCard = document.getElementById('settings-card');
-        const addTextBtn = document.getElementById('add-text-btn');
-        const exportBtn = document.getElementById('export-btn');
-
-        // Inputs
-        const inputs = {
-            text: document.getElementById('input-text'),
-            size: document.getElementById('input-size'),
-            color: document.getElementById('input-color'),
-            x: document.getElementById('input-x'),
-            y: document.getElementById('input-y'),
-            anchor: document.getElementById('input-anchor')
-        };
-
-        let textState = {
-            active: false,
-            content: "Hello World",
-            size: 24,
-            color: "#ff0000",
-            x: 50,
-            y: 50,
-            anchor: 'left'
-        };
-
-        // -- Event Listeners --
-
-        // 1. Upload PDF
-        uploadInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async function() {
-                const typedarray = new Uint8Array(this.result);
-                pdfBytes = typedarray; // Save for export later
-
-                // Load PDF using pdf.js
-                pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
-                renderPage(1);
-
-                addTextBtn.disabled = false;
-                exportBtn.disabled = false;
-            };
-            reader.readAsArrayBuffer(file);
+    // Helper: Redraw the page & overlays
+    function redraw() {
+      if (!page) return;
+      // Render page
+      renderTask = page.render({
+        canvasContext: ctx,
+        viewport: page.getViewport({ scale: renderScale }),
+      });
+      renderTask.promise.then(() => {
+        // Draw each text overlay
+        textOverlays.forEach(ov => {
+          ctx.save();
+          ctx.font = `${ov.fontSize}px Arial`;
+          ctx.fillStyle = ov.color;
+          ctx.textBaseline = "top";
+          let x = ov.x, anchor = ov.anchor, textWidth = ctx.measureText(ov.text).width;
+          // Anchor handling:
+          if (anchor === "center") x -= textWidth/2;
+          if (anchor === "right") x -= textWidth;
+          ctx.fillText(ov.text, x, ov.y);
+          ctx.restore();
         });
+      });
+    }
 
-        // 2. Add Text Button
-        addTextBtn.addEventListener('click', () => {
-            textState.active = true;
-            uiCard.style.display = 'block';
-            drawTextLayer(); // Draw initial text
+    // Helper: Render the pdf's first page to canvas
+    function renderPdfFirstPage(pdfData) {
+      pdfjsLib.getDocument({ data: pdfData }).promise.then(function(pdfDoc_) {
+        pdfDoc = pdfDoc_;
+        pdfDoc.getPage(pageNum).then(function(page_) {
+          page = page_;
+          let viewport = page.getViewport({ scale: renderScale });
+          pdfWidth = canvas.width = viewport.width|0;
+          pdfHeight = canvas.height = viewport.height|0;
+          redraw();
         });
+      });
+    }
 
-        // 3. Update Text on Input Change
-        Object.values(inputs).forEach(input => {
-            input.addEventListener('input', () => {
-                // Update state from inputs
-                textState.content = inputs.text.value;
-                textState.size = parseInt(inputs.size.value);
-                textState.color = inputs.color.value;
-                textState.x = parseInt(inputs.x.value);
-                textState.y = parseInt(inputs.y.value);
-                textState.anchor = inputs.anchor.value;
+    // When user uploads PDF
+    pdfUpload.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function() {
+        renderPdfFirstPage(new Uint8Array(reader.result));
+        addTextBtn.disabled = false;
+        textOverlays = [];
+        textCtrls.innerHTML = '';
+      };
+      reader.readAsArrayBuffer(file);
+    });
 
-                drawTextLayer();
-            });
-        });
+    // Add text overlay UI
+    addTextBtn.addEventListener('click', function() {
+      if (!pdfDoc) return;
+      const defaultText = `Text #${textOverlays.length+1}`;
+      let overlay = {
+        text: defaultText,
+        fontSize: 24,
+        color: '#d13b3b',
+        x: 60,
+        y: 60 + 40*textOverlays.length,
+        anchor: "left"
+      };
+      textOverlays.push(overlay);
 
-        // -- Functions --
+      // Create UI for this overlay
+      const idx = textOverlays.length-1;
+      const item = document.createElement('div');
+      item.className = "text-item";
+      item.innerHTML = `
+        <label>Text: <input type="text" value="${overlay.text}" class="text-input"></label>
+        <label>Font size: <input type="number" min="8" max="200" value="${overlay.fontSize}" class="font-size-input" style="width:60px"></label>
+        <label>Color: <input type="color" value="${overlay.color}" class="color-input"></label><br>
+        <label class="inline">X: <input type="number" min="0" max="10000" value="${overlay.x}" class="x-input" style="width:60px"></label>
+        <label class="inline">Y: <input type="number" min="0" max="10000" value="${overlay.y}" class="y-input" style="width:60px"></label>
+        <label class="inline">Anchor: 
+          <select class="anchor-input">
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </label>
+        <button class="remove-btn" style="float:right;">🗑 Remove</button>
+      `;
+      textCtrls.appendChild(item);
 
-        // Render PDF Page to Bottom Canvas
-        async function renderPage(num) {
-            const page = await pdfDoc.getPage(num);
-            const viewport = page.getViewport({ scale: 1.5 }); // 1.5 scale for better resolution
+      // Wire events for all inputs
+      const [textInput, fontSizeInput, colorInput, xInput, yInput, anchorInput, removeBtn] =
+        item.querySelectorAll('.text-input, .font-size-input, .color-input, .x-input, .y-input, .anchor-input, .remove-btn');
 
-            // Set dimensions for both canvases
-            pdfCanvas.height = viewport.height;
-            pdfCanvas.width = viewport.width;
-            textCanvas.height = viewport.height;
-            textCanvas.width = viewport.width;
+      textInput.addEventListener('input', e => { overlay.text = textInput.value; redraw(); });
+      fontSizeInput.addEventListener('input', e => { overlay.fontSize = parseInt(fontSizeInput.value)||12; redraw(); });
+      colorInput.addEventListener('input', e => { overlay.color = colorInput.value; redraw(); });
+      xInput.addEventListener('input', e => { overlay.x = parseInt(xInput.value)||0; redraw(); });
+      yInput.addEventListener('input', e => { overlay.y = parseInt(yInput.value)||0; redraw(); });
+      anchorInput.addEventListener('change', e => { overlay.anchor = anchorInput.value; redraw(); });
+      anchorInput.value = overlay.anchor;
+      removeBtn.addEventListener('click', function(e) {
+        textOverlays.splice(idx,1);
+        textCtrls.removeChild(item);
+        redraw();
+      });
 
-            pageScale = viewport.scale;
-
-            const renderContext = {
-                canvasContext: pdfCanvas.getContext('2d'),
-                viewport: viewport
-            };
-            await page.render(renderContext).promise;
-        }
-
-        // Draw Text to Top (Transparent) Canvas
-        function drawTextLayer() {
-            if (!textState.active) return;
-
-            const ctx = textCanvas.getContext('2d');
-            ctx.clearRect(0, 0, textCanvas.width, textCanvas.height); // Clear previous frame
-
-            ctx.font = `${textState.size}px Helvetica, Arial, sans-serif`; // Match PDF standard fonts roughly
-            ctx.fillStyle = textState.color;
-            
-            // Calculate Anchor Position
-            const textWidth = ctx.measureText(textState.content).width;
-            let drawX = textState.x;
-
-            if (textState.anchor === 'center') {
-                drawX = textState.x - (textWidth / 2);
-            } else if (textState.anchor === 'right') {
-                drawX = textState.x - textWidth;
-            }
-
-            // Draw
-            // Note: HTML Canvas Y=0 is top. PDF Y=0 is bottom.
-            // But visually on screen, we use Top-Left logic for inputs to match the preview.
-            // We will convert this during export.
-            ctx.fillText(textState.content, drawX, textState.y); 
-        }
-
-        // 4. Export PDF
-        exportBtn.addEventListener('click', async () => {
-            if (!pdfBytes) return;
-
-            const { PDFDocument, rgb } = PDFLib;
-
-            // Load the PDF
-            const pdfDoc = await PDFDocument.load(pdfBytes);
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
-            const { height } = firstPage.getSize();
-
-            // Embed standard font
-            const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-            // Convert Hex Color to RGB (0-1 range for pdf-lib)
-            const r = parseInt(textState.color.substr(1,2), 16) / 255;
-            const g = parseInt(textState.color.substr(3,2), 16) / 255;
-            const b = parseInt(textState.color.substr(5,2), 16) / 255;
-
-            // Calculate PDF Coordinates
-            // HTML Canvas: (0,0) is Top-Left. 
-            // PDF: (0,0) is usually Bottom-Left.
-            // We need to flip the Y.
-            // We also need to account for Scale. The inputs are based on the *Canvas* size (which is scaled 1.5x).
-            // We must divide by pageScale to get back to original PDF point units.
-            
-            const pdfTextSize = textState.size / 1.5; // Rough adjustment since canvas is scaled up
-            const rawX = textState.x;
-            const rawY = textState.y;
-
-            // Determine X based on anchor again for PDF
-            const textWidth = helveticaFont.widthOfTextAtSize(textState.content, pdfTextSize);
-            let finalX = rawX; // This is in canvas pixels
-
-            // Convert Canvas Pixels to PDF Points
-            // The canvas viewport was generated with `scale: 1.5`.
-            // So: PDF_Point = Canvas_Pixel / 1.5
-            let pdfX = rawX / 1.5;
-            let pdfY = height - (rawY / 1.5); // Flip Y axis
-
-            // Apply anchor logic in PDF coordinates
-            if (textState.anchor === 'center') {
-                pdfX = pdfX - (textWidth / 2);
-            } else if (textState.anchor === 'right') {
-                pdfX = pdfX - textWidth;
-            }
-
-            // Draw on PDF
-            firstPage.drawText(textState.content, {
-                x: pdfX,
-                y: pdfY, 
-                size: pdfTextSize,
-                font: helveticaFont,
-                color: rgb(r, g, b),
-            });
-
-            // Serialize and Download
-            const pdfBytesModified = await pdfDoc.save();
-            const blob = new Blob([pdfBytesModified], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'edited_pdf.pdf';
-            link.click();
-        });
-
-    </script>
+      redraw();
+    });
+  </script>
 </body>
-  </html>
-
+</html>
