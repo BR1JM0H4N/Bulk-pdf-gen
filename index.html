@@ -14,9 +14,9 @@
     input[type="color"] { vertical-align: middle; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>
-  eruda.init();
-</script>
+  <script>
+    eruda.init();
+  </script>
 </head>
 <body>
   <h2>Simple PDF Editor (Live Preview)</h2>
@@ -30,11 +30,11 @@
   <h3>Live Preview (First Page)</h3>
   <canvas id="pdf-canvas" width="600" height="800"></canvas>
 
-  <!-- PDF.js CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+  <!-- PDF.js CDN (use the non-minified bundle to ensure pdfjsLib is exposed) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.js"></script>
   <script>
     // PDF.js worker setup:
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.js";
 
     const pdfUpload = document.getElementById('pdf-upload');
     const addTextBtn = document.getElementById('add-text-btn');
