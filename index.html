@@ -9,15 +9,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Mobile PDF Editor</title>
 <style>
- body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
- .container { padding: 12px; }
- #previewWrapper { position: relative; width: 100%; }
- #pdfPreview { width: 100%; border: 1px solid #ddd; border-radius: 8px; }
- .text-overlay { position: absolute; padding: 4px 6px; background: rgba(255,255,255,0.6); border: 1px solid #333; border-radius: 4px; cursor: move; }
- .controls { margin-top: 12px; }
- .text-item { border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
- button { padding: 10px 14px; border: none; border-radius: 8px; background: #007bff; color: white; }
- input, select { width: 100%; padding: 8px; margin: 6px 0; }
+ body { margin: 0; background: #121212; color: #e0e0e0; font-family: Arial; }
+ .container { padding: 10px; }
+ h3 { text-align: center; margin: 10px 0 20px; }
+ button { width: 100%; padding: 10px; margin: 6px 0; border: none; border-radius: 8px; background: #1e88e5; color: white; font-size: 15px; }
+ input, select { width: 100%; padding: 8px; margin: 5px 0; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; color: #eee; }
+ #previewWrapper { position: relative; margin-top: 12px; }
+ #pdfPreview { width: 100%; border-radius: 10px; }
+ .text-item { background: #1e1e1e; border: 1px solid #333; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
+ .text-overlay { position: absolute; padding: 3px 5px; border-radius: 4px; background: rgba(0,0,0,0.7); color: white; font-size: 14px; }
+ .row { display: flex; gap: 6px; }
+ .half { width: 50%; }
 </style>
 </head>
 <body>
@@ -27,85 +29,80 @@
  <button id="addTextBtn" disabled>+ Add Text</button>
  <button id="exportBtn" disabled>Export PDF</button>
 
- <div id="previewWrapper">
-   <canvas id="pdfPreview"></canvas>
- </div>
+ <div id="previewWrapper"><canvas id="pdfPreview"></canvas></div>
 
- <div class="controls" id="textItems"></div>
+ <div id="textItems"></div>
 </div>
 
-<!-- FIX: Load pdf.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
-<!-- pdf-lib -->
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 
 <script>
-let pdfDoc = null;
-let scale = 1;
+let pdfDoc = null, scale = 1;
+const preview = document.getElementById("pdfPreview");
+const ctx = preview.getContext("2d");
 let overlays = [];
-const pdfPreview = document.getElementById("pdfPreview");
-const ctx = pdfPreview.getContext("2d");
 
-// Load PDF
-pdfFile.addEventListener("change", async (e) => {
- const file = e.target.files[0];
- if (!file) return;
- const arrayBuffer = await file.arrayBuffer();
-
- pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+pdfFile.addEventListener("change", async e => {
+ const file = e.target.files[0]; if (!file) return;
+ const buf = await file.arrayBuffer();
+ pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
  const page = await pdfDoc.getPage(1);
- const viewport = page.getViewport({ scale: 1 });
- scale = pdfPreview.clientWidth / viewport.width;
- const scaledViewport = page.getViewport({ scale });
- pdfPreview.width = scaledViewport.width;
- pdfPreview.height = scaledViewport.height;
-
- const renderContext = { canvasContext: ctx, viewport: scaledViewport };
- await page.render(renderContext).promise;
-
- addTextBtn.disabled = false;
- exportBtn.disabled = false;
+ const vp = page.getViewport({ scale: 1 });
+ scale = preview.clientWidth / vp.width;
+ const svp = page.getViewport({ scale });
+ preview.width = svp.width; preview.height = svp.height;
+ await page.render({ canvasContext: ctx, viewport: svp }).promise;
+ addTextBtn.disabled = false; exportBtn.disabled = false;
 });
 
-// Add text UI
+function refreshOverlay(id) {
+ const txt = document.getElementById(`txt_${id}`).value;
+ const fs = document.getElementById(`fs_${id}`).value;
+ const clr = document.getElementById(`clr_${id}`).value;
+ const ox = document.getElementById(`x_${id}`).value;
+ const oy = document.getElementById(`y_${id}`).value;
+ const ov = document.getElementById(`ov_${id}`);
+ ov.textContent = txt;
+ ov.style.fontSize = fs + "px";
+ ov.style.color = clr;
+ ov.style.left = ox + "px";
+ ov.style.top = oy + "px";
+}
+
 addTextBtn.addEventListener("click", () => {
  const id = Date.now();
- const div = document.createElement("div");
- div.className = "text-item";
- div.innerHTML = `
+ const box = document.createElement("div");
+ box.className = "text-item";
+ box.innerHTML = `
    <label>Text</label>
-   <input type="text" id="txt_${id}" placeholder="Enter text" />
-   <label>Font Size</label>
-   <input type="number" id="fs_${id}" value="16" />
-   <label>Color</label>
-   <input type="color" id="clr_${id}" value="#000000" />
-   <label>X Position</label>
-   <input type="number" id="x_${id}" value="50" />
-   <label>Y Position</label>
-   <input type="number" id="y_${id}" value="50" />
+   <input id="txt_${id}" placeholder="text" oninput="refreshOverlay(${id})" />
+   <div class="row"><div class="half">
+     <label>Size</label><input id="fs_${id}" type="number" value="16" oninput="refreshOverlay(${id})" />
+   </div><div class="half">
+     <label>Color</label><input id="clr_${id}" type="color" value="#ffffff" oninput="refreshOverlay(${id})" />
+   </div></div>
+   <div class="row"><div class="half">
+     <label>X</label><input id="x_${id}" type="number" value="50" oninput="refreshOverlay(${id})" />
+   </div><div class="half">
+     <label>Y</label><input id="y_${id}" type="number" value="50" oninput="refreshOverlay(${id})" />
+   </div></div>
    <label>Anchor</label>
-   <select id="anc_${id}">
-     <option value="left">Left</option>
-     <option value="center">Center</option>
-     <option value="right">Right</option>
-   </select>
-   <button onclick="removeText(${id})">Delete</button>
- `;
- textItems.appendChild(div);
+   <select id="anc_${id}"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+   <button onclick="removeText(${id})">Delete</button>`;
+ document.getElementById("textItems").appendChild(box);
 
- // create overlay
- const overlay = document.createElement("div");
- overlay.className = "text-overlay";
- overlay.id = `ov_${id}`;
- overlay.textContent = "New Text";
- overlay.style.left = "50px";
- overlay.style.top = "50px";
- overlay.dataset.id = id;
-
- enableDrag(overlay);
- previewWrapper.appendChild(overlay);
- overlays.push(overlay);
+ const ov = document.createElement("div");
+ ov.className = "text-overlay";
+ ov.id = `ov_${id}`;
+ ov.textContent = "Text";
+ ov.style.left = "50px";
+ ov.style.top = "50px";
+ ov.dataset.id = id;
+ previewWrapper.appendChild(ov);
+ overlays.push(ov);
+ enableDrag(ov);
 });
 
 function removeText(id) {
@@ -117,54 +114,50 @@ function removeText(id) {
 }
 
 function enableDrag(el) {
- let offsetX = 0, offsetY = 0;
+ let ox = 0, oy = 0;
  el.addEventListener("touchstart", e => {
    const t = e.touches[0];
-   offsetX = t.clientX - el.offsetLeft;
-   offsetY = t.clientY - el.offsetTop;
+   ox = t.clientX - el.offsetLeft; oy = t.clientY - el.offsetTop;
  });
  el.addEventListener("touchmove", e => {
    const t = e.touches[0];
-   el.style.left = (t.clientX - offsetX) + "px";
-   el.style.top = (t.clientY - offsetY) + "px";
+   el.style.left = (t.clientX - ox) + "px";
+   el.style.top = (t.clientY - oy) + "px";
    const id = el.dataset.id;
    document.getElementById(`x_${id}`).value = parseInt(el.style.left);
    document.getElementById(`y_${id}`).value = parseInt(el.style.top);
  });
 }
 
-// Export PDF
 exportBtn.addEventListener("click", async () => {
- const file = pdfFile.files[0];
- const arrayBuffer = await file.arrayBuffer();
- const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
- const page = pdf.getPage(0);
- const { width, height } = page.getSize();
+ const buf = await pdfFile.files[0].arrayBuffer();
+ const pdf = await PDFLib.PDFDocument.load(buf);
+ const p = pdf.getPage(0);
+ const { width, height } = p.getSize();
 
- overlays.forEach(el => {
-   const id = el.dataset.id;
+ overlays.forEach(o => {
+   const id = o.dataset.id;
    const txt = document.getElementById(`txt_${id}`).value;
    const fs = parseInt(document.getElementById(`fs_${id}`).value);
    const clr = document.getElementById(`clr_${id}`).value;
-   const x = parseInt(document.getElementById(`x_${id}`).value) / scale;
-   const y = height - parseInt(document.getElementById(`y_${id}`).value) / scale;
+   let x = parseInt(document.getElementById(`x_${id}`).value) / scale;
+   let y = height - (parseInt(document.getElementById(`y_${id}`).value) / scale);
 
-   page.drawText(txt, {
+   p.drawText(txt, {
      x,
      y,
      size: fs,
      color: PDFLib.rgb(
-       parseInt(clr.substr(1, 2), 16) / 255,
-       parseInt(clr.substr(3, 2), 16) / 255,
-       parseInt(clr.substr(5, 2), 16) / 255
+       parseInt(clr.substr(1,2),16)/255,
+       parseInt(clr.substr(3,2),16)/255,
+       parseInt(clr.substr(5,2),16)/255
      )
    });
  });
 
- const pdfBytes = await pdf.save();
- const blob = new Blob([pdfBytes], { type: "application/pdf" });
+ const out = await pdf.save();
  const link = document.createElement("a");
- link.href = URL.createObjectURL(blob);
+ link.href = URL.createObjectURL(new Blob([out]));
  link.download = "edited.pdf";
  link.click();
 });
