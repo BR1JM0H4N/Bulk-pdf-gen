@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Universal Batch Certificate Generator</title>
+
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin: 0; background:#0f1720; color:#e6eef8; }
+    header{ padding:18px; background: linear-gradient(90deg,#081028,#14243a); display:flex; gap:12px; align-items:center;}
+    header h1{ font-size:18px; margin:0;}
+    main{ display:flex; gap:18px; padding:18px; }
+    .col{ background: rgba(255,255,255,0.03); padding:14px; border-radius:10px; min-width:320px;}
+    label{ display:block; font-size:13px; margin-top:8px; color:#bcd2ff;}
+    input[type=file], input[type=text], textarea, select, button { width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); color:inherit;}
+    button{ cursor:pointer; background: linear-gradient(90deg,#6b46ff,#8e7bff); color:white; font-weight:600; border:none; padding:10px;}
+    .previewWrap{ position:relative; width:820px; height:1160px; background:#222; display:flex; align-items:center; justify-content:center; overflow:auto; }
+    #pdfCanvas{ background: white; display:block; margin:10px auto; box-shadow: 0 8px 28px rgba(0,0,0,0.6);}
+    .overlay{ position:absolute; top:0; left:0; pointer-events:none; }
+    .placeholder{ position:absolute; min-width:60px; padding:6px 8px; border-radius:6px; background:rgba(255,255,255,0.9); color:#000; font-weight:600; cursor:grab; pointer-events:auto; user-select:none; border:1px dashed rgba(0,0,0,0.2);}
+    .controls-row{ display:flex; gap:8px; margin-top:8px;}
+    small { color:#9fb1df; }
+    .field-list{ max-height:160px; overflow:auto; margin-top:8px; border:1px dashed rgba(255,255,255,0.03); padding:6px; border-radius:6px; background:rgba(255,255,255,0.01)}
+    .field-item{ display:flex; justify-content:space-between; gap:8px; padding:6px 4px; border-bottom:1px solid rgba(255,255,255,0.01); align-items:center;}
+    .hint{ font-size:12px; color:#9fb1df; margin-top:6px;}
+    footer{ padding:12px; text-align:center; color:#9fb1df; font-size:13px;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Universal Batch Certificate Generator — Visual Template Editor</h1>
+    <div style="margin-left:auto; font-size:13px; color:#9fb1df;">Client-only • No server</div>
+  </header>
+
+  <main>
+    <div class="col" style="flex:0 0 360px;">
+      <label>1) Upload template PDF (first page is used for positioning)</label>
+      <input type="file" id="pdfFile" accept="application/pdf">
+
+      <label>Optional: Upload custom font (TTF/OTF) to embed in generated PDFs</label>
+      <input type="file" id="fontFile" accept=".ttf,.otf">
+
+      <label>2) Upload student JSON (array under `students`):</label>
+      <textarea id="jsonInput" rows="7" placeholder='{"students":[{"Name":"John Doe","Roll":"01"}, {"Name":"Jane","Roll":"02"}]'}></textarea>
+      <div class="controls-row">
+        <button id="loadJson">Detect Fields</button>
+        <button id="downloadSample">Download Sample JSON</button>
+      </div>
+      <small class="hint">JSON must contain top-level `students` array. Keys become available fields.</small>
+
+      <hr style="margin:12px 0; border:none; border-top:1px solid rgba(255,255,255,0.03)">
+
+      <label>Detected fields</label>
+      <div class="field-list" id="fieldList">No fields detected yet.</div>
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="saveTemplateConfig">Save Template JSON</button>
+        <button id="loadTemplateConfig">Load Template JSON</button>
+        <input type="file" id="loadTemplateFile" accept=".json" style="display:none;">
+      </div>
+
+      <label style="margin-top:12px">Selected placeholder controls</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="fontSize" placeholder="font size (px)" />
+        <input type="color" id="fontColor" value="#000000" />
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <select id="textAlign">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+        <button id="deletePlaceholder">Delete</button>
+      </div>
+
+      <hr style="margin:12px 0; border:none; border-top:1px solid rgba(255,255,255,0.03)">
+
+      <label>3) Generate certificates</label>
+      <div style="display:flex; gap:8px;">
+        <button id="generateBtn">Generate PDFs</button>
+        <button id="generateZipBtn">Generate ZIP (optional)</button>
+      </div>
+      <small class="hint">Each certificate will download as a separate PDF (or zipped). Filenames use `primaryField` if available.</small>
+    </div>
+
+    <div style="flex:1">
+      <div class="previewWrap" id="previewWrap">
+        <canvas id="pdfCanvas"></canvas>
+        <div id="overlay" class="overlay"></div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="fitWidth">Fit width</button>
+        <button id="fitHeight">Fit height</button>
+        <button id="resetView">Reset view</button>
+      </div>
+      <div style="margin-top:8px; font-size:13px; color:#9fb1df;">
+        <strong>How to use:</strong> Upload template → load JSON → click a detected field (it appears on the template) → drag it to position → adjust size/color/alignment → Save Template → Generate.
+      </div>
+    </div>
+  </main>
+
+  <footer>Made for educators — drag & drop visual template editor + batch PDF generation (pdf-lib)</footer>
+
+  <!-- Libraries -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://unpkg.com/fontkit@1.8.3/dist/fontkit.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+  (async ()=>{
+
+  // Short aliases
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+
+  // Elements
+  const pdfFileEl = document.getElementById('pdfFile');
+  const fontFileEl = document.getElementById('fontFile');
+  const jsonInput = document.getElementById('jsonInput');
+  const loadJsonBtn = document.getElementById('loadJson');
+  const fieldList = document.getElementById('fieldList');
+  const previewWrap = document.getElementById('previewWrap');
+  const pdfCanvas = document.getElementById('pdfCanvas');
+  const overlay = document.getElementById('overlay');
+  const saveTemplateConfigBtn = document.getElementById('saveTemplateConfig');
+  const loadTemplateConfigBtn = document.getElementById('loadTemplateConfig');
+  const loadTemplateFile = document.getElementById('loadTemplateFile');
+  const fontSizeInput = document.getElementById('fontSize');
+  const fontColorInput = document.getElementById('fontColor');
+  const textAlignInput = document.getElementById('textAlign');
+  const deletePlaceholderBtn = document.getElementById('deletePlaceholder');
+  const generateBtn = document.getElementById('generateBtn');
+  const downloadSampleBtn = document.getElementById('downloadSample');
+  const generateZipBtn = document.getElementById('generateZipBtn');
+  const fitWidthBtn = document.getElementById('fitWidth');
+  const fitHeightBtn = document.getElementById('fitHeight');
+  const resetViewBtn = document.getElementById('resetView');
+
+  // State
+  let pdfBytes = null;            // Uint8Array of uploaded PDF
+  let pdfDocForPreview = null;    // pdf.js loaded document for rendering preview
+  let pageViewport = null;        // stored viewport for scale computations
+  let scale = 1;
+  let detectedFields = [];        // array of unique keys from JSON
+  let placeholders = {};          // map fieldName -> placeholder DOM element & meta
+  let dragging = null;            // currently dragging placeholder info
+  let students = [];              // student data array
+  let templateConfig = { fields: {} };
+  let customFontBytes = null;     // optional uploaded font bytes
+  let primaryFieldKey = null;     // used for naming files, defaults to first field
+
+  // Helper: show message in fieldList
+  function setFieldListHTML(html){ fieldList.innerHTML = html; }
+
+  // PDF preview rendering (uses pdf.js)
+  async function renderPreview() {
+    if(!pdfBytes) { pdfCanvas.width = 600; pdfCanvas.height = 800; const ctx = pdfCanvas.getContext('2d'); ctx.fillStyle='#eee'; ctx.fillRect(0,0,pdfCanvas.width,pdfCanvas.height); return; }
+    // load with pdf.js
+    const loadingTask = pdfjsLib.getDocument({data: pdfBytes});
+    pdfDocForPreview = await loadingTask.promise;
+    const page = await pdfDocForPreview.getPage(1);
+    // compute scale to render decent resolution
+    const desiredWidth = 900; // px for comfortable editing
+    const viewport0 = page.getViewport({ scale: 1 });
+    const s = desiredWidth / viewport0.width;
+    scale = s;
+    pageViewport = page.getViewport({ scale });
+    pdfCanvas.width = Math.round(pageViewport.width);
+    pdfCanvas.height = Math.round(pageViewport.height);
+    const ctx = pdfCanvas.getContext('2d');
+    // clear overlay
+    overlay.style.width = pdfCanvas.width + 'px';
+    overlay.style.height = pdfCanvas.height + 'px';
+    overlay.style.left = pdfCanvas.offsetLeft + 'px';
+    overlay.style.top = pdfCanvas.offsetTop + 'px';
+    // render page
+    await page.render({ canvasContext: ctx, viewport: pageViewport }).promise;
+    // reposition placeholders if any (reapply positions based on ratios)
+    for(const key in placeholders) {
+      const p = placeholders[key];
+      if(p.meta && p.meta.norm) {
+        const { xRatio, yRatio } = p.meta.norm;
+        p.el.style.left = (xRatio * pdfCanvas.width) + 'px';
+        p.el.style.top  = (yRatio * pdfCanvas.height) + 'px';
+      }
+    }
+  }
+
+  // handle PDF file upload
+  pdfFileEl.addEventListener('change', async (e)=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    pdfBytes = new Uint8Array(await f.arrayBuffer());
+    await renderPreview();
+    // clear templateConfig because new PDF may change dims
+    templateConfig = { fields: {} };
+    // recalc placeholder normalized positions so they reappear
+    Object.values(placeholders).forEach(p => {
+      if(p.el) { p.el.parentNode && p.el.parentNode.removeChild(p.el); }
+    });
+    placeholders = {};
+  });
+
+  // font upload
+  fontFileEl.addEventListener('change', async (e)=>{
+    const f = e.target.files[0];
+    if(!f) { customFontBytes = null; return; }
+    customFontBytes = new Uint8Array(await f.arrayBuffer());
+    alert('Custom font loaded for embedding on generation.');
+  });
+
+  // load JSON student data
+  loadJsonBtn.addEventListener('click', ()=>{
+    let txt = jsonInput.value.trim();
+    if(!txt){ alert('Please paste or upload student JSON in the textarea.'); return; }
+    try {
+      const obj = JSON.parse(txt);
+      if(!Array.isArray(obj.students)) { alert('JSON must contain "students" array. Sample provided.'); return; }
+      students = obj.students;
+      // detect fields (unique keys across students, preserve order)
+      const keys = [];
+      for(const s of students) {
+        for(const k of Object.keys(s)) if(!keys.includes(k)) keys.push(k);
+      }
+      detectedFields = keys;
+      primaryFieldKey = keys[0] || null;
+      buildFieldListUI();
+    } catch(err) {
+      alert('Invalid JSON: ' + err.message);
+    }
+  });
+
+  // sample downloader
+  downloadSampleBtn.addEventListener('click', ()=>{
+    const sample = {
+      students: [
+        { "Name":"John Doe", "Roll":"01", "Section":"A", "Topic":"Project" },
+        { "Name":"Jane Smith", "Roll":"02", "Section":"B", "Topic":"Report" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(sample, null, 2)], {type:'application/json'});
+    saveAs(blob, 'sample_students.json');
+  });
+
+  // Build field list UI
+  function buildFieldListUI(){
+    if(detectedFields.length===0){ setFieldListHTML('No fields detected.'); return; }
+    let html = '';
+    for(const key of detectedFields){
+      html += `<div class="field-item"><div style="font-weight:700;color:#dbe9ff">${escapeHtml(key)}</div><div><button data-field="${escapeHtml(key)}" class="placeBtn">Place</button></div></div>`;
+    }
+    setFieldListHTML(html);
+
+    // attach listeners to place buttons
+    Array.from(fieldList.querySelectorAll('.placeBtn')).forEach(b=>{
+      b.addEventListener('click', ()=> {
+        const field = b.getAttribute('data-field');
+        if(placeholders[field]) { selectPlaceholder(field); return; } // already placed => select
+        createPlaceholder(field);
+      });
+    });
+  }
+
+  // escape helper
+  function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+  // Create placeholder element and attach drag handlers
+  function createPlaceholder(fieldName){
+    const el = document.createElement('div');
+    el.className = 'placeholder';
+    el.textContent = fieldName;
+    el.style.left = '20px';
+    el.style.top = '20px';
+    el.style.fontSize = '20px';
+    el.style.background = '#fff';
+    el.style.color = '#000';
+    el.style.pointerEvents = 'auto';
+    overlay.appendChild(el);
+
+    // default meta: normalized ratios (xRatio, yRatio) relative to current canvas
+    const meta = { norm: { xRatio: 20 / (pdfCanvas.width||1), yRatio: 20 / (pdfCanvas.height||1) }, fontSize:20, color:'#000000', align:'left' };
+    placeholders[fieldName] = { el, meta, name: fieldName };
+
+    // selection on click
+    el.addEventListener('click', (ev)=>{ ev.stopPropagation(); selectPlaceholder(fieldName); });
+
+    // drag
+    el.addEventListener('pointerdown', (ev)=>{
+      ev.preventDefault();
+      dragging = { field: fieldName, startX: ev.clientX, startY: ev.clientY, origLeft: parseFloat(el.style.left||0), origTop: parseFloat(el.style.top||0) };
+      el.setPointerCapture(ev.pointerId);
+      el.style.cursor = 'grabbing';
+    });
+    el.addEventListener('pointerup', (ev)=>{
+      if(!dragging) return;
+      finalizeDrag(fieldName);
+      const el = placeholders[fieldName].el;
+      el.releasePointerCapture(ev.pointerId);
+      el.style.cursor = 'grab';
+      dragging = null;
+    });
+    el.addEventListener('pointermove', (ev)=>{
+      if(!dragging || dragging.field !== fieldName) return;
+      const dx = ev.clientX - dragging.startX;
+      const dy = ev.clientY - dragging.startY;
+      const nx = Math.max(0, dragging.origLeft + dx);
+      const ny = Math.max(0, dragging.origTop + dy);
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+      // update normalized meta live
+      placeholders[fieldName].meta.norm = { xRatio: nx / pdfCanvas.width, yRatio: ny / pdfCanvas.height };
+    });
+
+    // auto-select new one
+    selectPlaceholder(fieldName);
+  }
+
+  // finalize drag -> update normalized pos
+  function finalizeDrag(fieldName){
+    const p = placeholders[fieldName];
+    if(!p) return;
+    const left = parseFloat(p.el.style.left||0);
+    const top = parseFloat(p.el.style.top||0);
+    p.meta.norm = { xRatio: left / pdfCanvas.width, yRatio: top / pdfCanvas.height };
+  }
+
+  // select placeholder -> populate controls
+  function selectPlaceholder(fieldName){
+    const p = placeholders[fieldName];
+    if(!p) return;
+    // highlight selected visually
+    Object.values(placeholders).forEach(q => q.el.style.outline = 'none');
+    p.el.style.outline = '2px solid rgba(99,102,241,0.9)';
+    fontSizeInput.value = p.meta.fontSize || 20;
+    fontColorInput.value = p.meta.color || '#000000';
+    textAlignInput.value = p.meta.align || 'left';
+    // wire control change handlers
+    fontSizeInput.onchange = ()=>{ p.meta.fontSize = Number(fontSizeInput.value); p.el.style.fontSize = p.meta.fontSize + 'px'; };
+    fontColorInput.onchange = ()=>{ p.meta.color = fontColorInput.value; p.el.style.color = p.meta.color; };
+    textAlignInput.onchange = ()=>{ p.meta.align = textAlignInput.value; p.el.style.textAlign = p.meta.align; };
+    deletePlaceholderBtn.onclick = ()=>{ p.el.parentNode.removeChild(p.el); delete placeholders[fieldName]; };
+  }
+
+  // Save template JSON (positions normalized)
+  saveTemplateConfigBtn.addEventListener('click', ()=>{
+    if(!pdfBytes){ alert('Upload a template PDF first.'); return; }
+    // build templateConfig
+    templateConfig = { pageWidth: pdfCanvas.width, pageHeight: pdfCanvas.height, fields: {} };
+    for(const [key, p] of Object.entries(placeholders)) {
+      // ensure meta.norm exists
+      if(!p.meta.norm) finalizeDrag(key);
+      templateConfig.fields[key] = {
+        xRatio: p.meta.norm.xRatio,
+        yRatio: p.meta.norm.yRatio,
+        fontSize: p.meta.fontSize || 20,
+        color: p.meta.color || '#000000',
+        align: p.meta.align || 'left'
+      };
+    }
+    const blob = new Blob([JSON.stringify(templateConfig, null, 2)], {type:'application/json'});
+    saveAs(blob, 'template_config.json');
+  });
+
+  // load template JSON file
+  loadTemplateConfigBtn.addEventListener('click', ()=> loadTemplateFile.click());
+  loadTemplateFile.addEventListener('change', async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const txt = await f.text();
+    try{
+      const conf = JSON.parse(txt);
+      // apply template (we need pdf to be loaded to know size)
+      if(!pdfBytes){ alert('Upload the same template PDF first, then load its template JSON.'); return; }
+      templateConfig = conf;
+      // create placeholders for each field in config
+      Object.values(placeholders).forEach(p => p.el.parentNode && p.el.parentNode.removeChild(p.el));
+      placeholders = {};
+      for(const key of Object.keys(conf.fields)){
+        createPlaceholder(key);
+        // position according to xRatio,yRatio relative to current rendered canvas
+        const entry = conf.fields[key];
+        const left = (entry.xRatio || 0) * pdfCanvas.width;
+        const top  = (entry.yRatio || 0) * pdfCanvas.height;
+        const p = placeholders[key];
+        p.el.style.left = left + 'px';
+        p.el.style.top  = top  + 'px';
+        p.meta.fontSize = entry.fontSize || 20;
+        p.el.style.fontSize = p.meta.fontSize + 'px';
+        p.meta.color = entry.color || '#000000';
+        p.el.style.color = p.meta.color;
+        p.meta.align = entry.align || 'left';
+        p.el.style.textAlign = p.meta.align;
+        p.meta.norm = { xRatio: entry.xRatio, yRatio: entry.yRatio };
+      }
+    }catch(err){ alert('Invalid template JSON: '+err.message); }
+  });
+
+  // Reset view / fit
+  fitWidthBtn.addEventListener('click', ()=> { if(!pdfDocForPreview) return; const page = pdfDocForPreview.getPage(1); renderPreview(); });
+  fitHeightBtn.addEventListener('click', ()=> { if(!pdfDocForPreview) return; renderPreview(); });
+  resetViewBtn.addEventListener('click', ()=> { if(!pdfDocForPreview) return; renderPreview(); });
+
+  // Generate PDFs — core generation using pdf-lib
+  generateBtn.addEventListener('click', async ()=>{
+    if(!pdfBytes){ alert('Upload template PDF first'); return; }
+    if(students.length===0){ alert('Load student JSON first'); return; }
+    if(Object.keys(placeholders).length===0){ if(!confirm('No placeholders placed. Continue and generate original PDFs?')) return; }
+    // create list of fields in template config
+    // build final templateConfig if not saved earlier
+    const finalConfig = { fields: {} };
+    for(const [key,p] of Object.entries(placeholders)){
+      if(!p.meta.norm) finalizeDrag(key);
+      finalConfig.fields[key] = { ...p.meta.norm, fontSize: p.meta.fontSize || 20, color: p.meta.color || '#000000', align: p.meta.align || 'left' };
+    }
+    // loop students
+    for(const s of students){
+      try{
+        // load a fresh PDFDocument per student
+        const doc = await PDFDocument.load(pdfBytes);
+        // register fontkit + embed custom font if provided
+        if(customFontBytes){
+          try{
+            doc.registerFontkit(fontkit);
+            const customFont = await doc.embedFont(customFontBytes);
+            var chosenFont = customFont;
+          }catch(e){
+            console.warn('Font embedding failed, falling back to standard font', e);
+            var chosenFont = await doc.embedFont(StandardFonts.Helvetica);
+          }
+        } else {
+          var chosenFont = await doc.embedFont(StandardFonts.Helvetica);
+        }
+        const pages = doc.getPages();
+        const page = pages[0];
+        const { width, height } = page.getSize();
+
+        // draw each field if value exists in student record
+        for(const [fieldName, cfg] of Object.entries(finalConfig.fields)){
+          const text = (s[fieldName] !== undefined && s[fieldName] !== null) ? String(s[fieldName]) : '';
+          // compute absolute coordinates
+          const x = (cfg.xRatio || 0) * width;
+          // pdf-lib y origin is bottom-left; our yRatio is from top in preview; convert:
+          const yFromTop = (cfg.yRatio || 0) * pdfCanvas.height;
+          // map preview (which had pageViewport.height) to actual PDF height:
+          const y = height - ( (yFromTop / pdfCanvas.height) * height );
+          const size = cfg.fontSize || 20;
+          // horizontal alignment
+          let drawX = x;
+          if(cfg.align === 'center'){
+            const textWidth = chosenFont.widthOfTextAtSize(text, size);
+            drawX = x - (textWidth / 2);
+          } else if(cfg.align === 'right'){
+            const textWidth = chosenFont.widthOfTextAtSize(text, size);
+            drawX = x - textWidth;
+          }
+          page.drawText(text, { x: drawX, y: y, size, font: chosenFont, color: rgb(0,0,0) });
+        }
+
+        // create filename using primary field if present
+        let fname = 'certificate.pdf';
+        if(primaryFieldKey && s[primaryFieldKey]) {
+          const safe = String(s[primaryFieldKey]).replace(/[^a-z0-9_\- ]/ig,'').replace(/\s+/g,'_');
+          fname = `${safe}.pdf`;
+        } else {
+          // try Name, or fallback index
+          if(s.Name) fname = `${String(s.Name).replace(/\s+/g,'_')}.pdf`;
+        }
+
+        const outBytes = await doc.save();
+        const blob = new Blob([outBytes], {type:'application/pdf'});
+        saveAs(blob, fname);
+      } catch(err){
+        console.error('Failed to generate for student', s, err);
+      }
+    }
+    alert('Generation finished. Check your downloads.');
+  });
+
+  // Optional: create ZIP using JSZip if user wants single file (we'll try to load JSZip dynamically)
+  generateZipBtn.addEventListener('click', async ()=>{
+    if(!pdfBytes){ alert('Upload template PDF first'); return; }
+    if(students.length===0){ alert('Load student JSON first'); return; }
+    // ask user if they want zip generation
+    if(!confirm('This will bundle all generated PDFs into a single ZIP for download. Continue?')) return;
+
+    // load JSZip dynamically
+    const jszipUrl = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    await loadScript(jszipUrl);
+    if(!window.JSZip){ alert('Failed to load JSZip.'); return; }
+    const zip = new JSZip();
+    // generate files and add to zip (similar code as above)
+    for(let i=0;i<students.length;i++){
+      const s = students[i];
+      try{
+        const doc = await PDFDocument.load(pdfBytes);
+        if(customFontBytes){
+          try{ doc.registerFontkit(fontkit); var custom = await doc.embedFont(customFontBytes); var chosenFont = custom; }catch(e){ chosenFont = await doc.embedFont(StandardFonts.Helvetica); }
+        } else chosenFont = await doc.embedFont(StandardFonts.Helvetica);
+        const page = doc.getPages()[0];
+        const { width, height } = page.getSize();
+        const finalConfig = { fields: {} };
+        for(const [key,p] of Object.entries(placeholders)){ finalConfig.fields[key] = { ...p.meta.norm, fontSize: p.meta.fontSize || 20, color: p.meta.color || '#000000', align: p.meta.align || 'left' }; }
+        for(const [fieldName, cfg] of Object.entries(finalConfig.fields)){
+          const text = (s[fieldName] !== undefined && s[fieldName] !== null) ? String(s[fieldName]) : '';
+          const x = (cfg.xRatio || 0) * width;
+          const yFromTop = (cfg.yRatio || 0) * pdfCanvas.height;
+          const y = height - ( (yFromTop / pdfCanvas.height) * height );
+          const size = cfg.fontSize || 20;
+          let drawX = x;
+          if(cfg.align === 'center'){ drawX = x - (chosenFont.widthOfTextAtSize(text,size)/2); }
+          else if(cfg.align === 'right'){ drawX = x - chosenFont.widthOfTextAtSize(text,size); }
+          page.drawText(text, { x: drawX, y, size, font: chosenFont, color: rgb(0,0,0) });
+        }
+        const bytes = await doc.save();
+        const fname = s.Name ? `${s.Name.replace(/\s+/g,'_')}.pdf` : `student_${i+1}.pdf`;
+        zip.file(fname, bytes);
+      } catch(err){ console.error('zip gen fail', err); }
+    }
+    const content = await zip.generateAsync({type:'blob'});
+    saveAs(content, 'certificates_bundle.zip');
+  });
+
+  // utility to load script
+  function loadScript(url){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=url; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+
+  // initial empty canvas
+  (function initCanvas(){ pdfCanvas.width = 620; pdfCanvas.height = 880; const ctx = pdfCanvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,pdfCanvas.width,pdfCanvas.height); overlay.style.width = pdfCanvas.width+'px'; overlay.style.height = pdfCanvas.height+'px'; })();
+
+  // click on preview to deselect placeholder
+  overlay.addEventListener('click', ()=>{ Object.values(placeholders).forEach(q=>q.el.style.outline='none'); });
+
+  // expose some small helpful global in console for debugging
+  window._certGen = { placeholders, detectedFields, students, templateConfig };
+
+  // end IIFE
+  })();
+  </script>
+</body>
+</html>
