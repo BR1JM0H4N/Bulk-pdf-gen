@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Universal PDF Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    eruda.init();
+  </script>
+  <style>
+:root{
+    --bg: #0b0f14;
+    --surface: #121821;
+    --surface-2: #171f2b;
+    --outline: #2a3240;
+
+    --primary: #8b5cf6;
+    --primary-2: #6366f1;
+    --on-primary: #ffffff;
+
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    }
+
+    *{
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    }
+
+    body{
+    margin: 0;
+    background: radial-gradient(circle at top, #0e1424, #080b12);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto;
+    min-height: 100dvh;
+    padding: 16px;
+    }
+
+    /* ---------- LAYOUT ---------- */
+
+    .container{
+    max-width: 1200px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    }
+
+    @media (min-width: 900px){
+    .container{
+    grid-template-columns: 420px 1fr;
+    }
+    }
+
+    /* ---------- CARD ---------- */
+
+    .card{
+    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow:
+    0 10px 30px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.03);
+    border: 1px solid var(--outline);
+    }
+
+    /* ---------- HEADINGS ---------- */
+
+    h1{
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    }
+
+    small{
+    color: var(--muted);
+    font-size: 12px;
+    }
+
+    /* ---------- FORMS ---------- */
+
+    label{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-top: 14px;
+    display: block;
+    }
+
+    input,
+    select,
+    button{
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--outline);
+    background: #0f1522;
+    color: var(--text);
+    font-size: 14px;
+    }
+
+    /* Remove ugly default arrows on mobile */
+    select{
+    appearance: none;
+    background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position:
+    calc(100% - 18px) 55%,
+    calc(100% - 12px) 55%;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    }
+
+    /* ---------- COLOR INPUT ---------- */
+
+    input[type="color"]{
+    height: 46px;
+    padding: 0;
+    background: #0f1522;
+    cursor: pointer;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper{
+    padding: 4px;
+    }
+
+    input[type="color"]::-webkit-color-swatch{
+    border-radius: 10px;
+    border: none;
+    }
+
+    input[type="color"]::-moz-color-swatch{
+    border-radius: 10px;
+    border: none;
+    }
+
+    /* ---------- BUTTONS ---------- */
+
+    button{
+    border: none;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    color: var(--on-primary);
+    font-weight: 600;
+    letter-spacing: .3px;
+    box-shadow:
+    0 6px 18px rgba(139,92,246,.35);
+    transition: transform .1s ease, box-shadow .1s ease;
+    }
+
+    button:active{
+    transform: scale(.97);
+    box-shadow: 0 3px 10px rgba(139,92,246,.4);
+    }
+
+    button.secondary{
+    background: #1b2333;
+    color: var(--text);
+    box-shadow: none;
+    border: 1px solid var(--outline);
+    }
+
+    /* ---------- ROW BUTTONS ---------- */
+
+    .row{
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    }
+
+    .row button{
+    flex: 1;
+    }
+
+    /* ---------- CANVAS ---------- */
+
+    .canvasBox{
+    height: 460px;
+    background: #000;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid var(--outline);
+    }
+
+    canvas{
+    max-width: 100%;
+    max-height: 100%;
+    }
+
+    /* ---------- SEPARATORS ---------- */
+
+    hr{
+    border: none;
+    height: 1px;
+    background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255,255,255,.15),
+    transparent
+    );
+    margin: 18px 0;
+    }
+
+    /* ---------- MOBILE POLISH ---------- */
+
+    @media (max-width: 600px){
+    h1{ font-size: 17px;
+    }
+    input, select, button{ font-size: 15px;
+    }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="card">
+      <h1>Universal PDF Generator v1.95</h1>
+      <small>JSON driven • Canvas preview • ZIP export</small>
+
+      <label>Template PDF</label>
+      <input type="file" id="template" accept=".pdf">
+
+      <label style="margin-top:12px">JSON File</label>
+      <input type="file" id="jsonFile" accept=".json">
+
+      <label style="margin-top:12px">Fonts (TTF/OTF)</label>
+      <input type="file" id="fonts" multiple accept=".ttf,.otf">
+
+      <button id="previewBtn">Preview First Entry</button>
+      <button id="zipBtn" class="secondary">Generate ZIP</button>
+
+      <small id="status">Idle</small>
+      <button id="exportJson" class="secondary">Export Config JSON</button>
+    </div>
+
+    <hr style="opacity:.15;margin:16px 0">
+
+    <button id="exportPreset">Export Preset (.pep)</button>
+    <input type="file" id="loadPreset" accept=".pep" hidden>
+    <button id="loadPresetBtn" class="secondary">Load Preset (.pep)</button>
+    <div class="card">
+      <h1>Canvas Preview</h1>
+      <div class="canvasBox">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+    </div>
+
+  </div>
+  <!-- value editor  -->
+  <hr style="opacity:.15;margin:16px 0">
+
+  <h1>Values Editor</h1>
+
+  <label>Select Entry</label>
+  <select id="valueSelect"></select>
+
+  <div id="valueInputs"></div>
+
+  <button id="saveValue">Save Entry</button>
+  <button id="addValue" class="secondary">Add New Entry</button>
+
+
+
+  <!-- field editor  -->
+  <hr style="opacity:.15;margin:16px 0">
+
+  <h1>Field Editor</h1>
+
+  <label>Choose Field</label>
+  <select id="fieldSelect"></select>
+
+  <label style="margin-top:10px">Field Name</label>
+  <input id="f_name" placeholder="name / id / Dean">
+
+  <label>Type</label>
+  <select id="f_type">
+    <option value="">Dynamic</option>
+    <option value="static">Static</option>
+  </select>
+
+  <label>Static Value</label>
+  <input id="f_value" placeholder="Used if type=static">
+
+  <label>Font</label>
+  <select id="f_font"></select>
+
+  <label>Font Size</label>
+  <input id="f_size" type="number">
+
+  <label>Color</label>
+  <input id="f_color" type="color">
+
+  <label>Align</label>
+  <select id="f_align">
+    <option value="default">Default</option>
+    <option value="centered">Centered</option>
+    <option value="righted">Righted</option>
+  </select>
+
+  <label>X Position</label>
+  <input id="f_x" type="number">
+
+  <label>Y Position</label>
+  <input id="f_y" type="number">
+  <div class="row">
+    <button type="button" id="snapX">Snap X → Page Mid</button>
+    <button type="button" id="snapY" class="secondary">Snap Y → Page Mid</button>
+  </div>
+
+  <button id="saveField">Save Field</button>
+  <button id="addField" class="secondary">Add New Field</button>
+
+  <!-- LIBS (ORDER MATTERS) -->
+  <script src="pdf-lib.min.js"></script>
+  <script src="fontkit.umd.min.js"></script>
+  <script src="jszip.min.js"></script>
+  <script src="filesaver.js"></script>
+  <script src="pdf.min.js"></script>
+  <script src="pdf.worker.min.js"></script>
+  <script>
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+    const canvas = document.getElementById("previewCanvas");
+    const ctx = canvas.getContext("2d");
+    const status = document.getElementById("status");
+
+    let templateBytes = null;
+    let jsonData = null;
+    let fontBuffers = {};
+    let pageWidth = 0;
+    let pageHeight = 0;
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "pdf.worker.min.js";
+
+    async function renderPdfToCanvas(pdfBytes) {
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+    const pdf = await loadingTask.promise;
+
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.8 });
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const renderContext = {
+    canvasContext: ctx,
+    viewport: viewport
+    };
+
+    await page.render(renderContext).promise;
+    }
+
+    // ---------------- LOADERS ----------------
+    document.getElementById("template").onchange = async e=>{
+    templateBytes = await e.target.files[0].arrayBuffer();
+    // Page mid finders
+    const pdf = await PDFLib.PDFDocument.load(templateBytes);
+    const page = pdf.getPages()[0];
+    const size = page.getSize();
+
+    pageWidth = size.width;
+    pageHeight = size.height;
+    };
+    document.getElementById("snapX").onclick = ()=>{
+    if (!pageWidth){
+    alert("Load template first");
+    return;
+    }
+    f_x.value = Math.round(pageWidth / 2);
+    };
+
+    document.getElementById("snapY").onclick = ()=>{
+    if (!pageHeight){
+    alert("Load template first");
+    return;
+    }
+    f_y.value = Math.round(pageHeight / 2);
+    };
+
+    document.getElementById("jsonFile").onchange = async e=>{
+    jsonData = JSON.parse(await e.target.files[0].text());
+    refreshFieldList();
+    refreshValueList();
+    };
+    // field parameters editor
+    const fieldSelect = document.getElementById("fieldSelect");
+
+    function refreshFieldList(){
+    fieldSelect.innerHTML = "";
+    for (const k in jsonData.fields){
+    const opt = document.createElement("option");
+    opt.value = k;
+    opt.textContent = k;
+    fieldSelect.appendChild(opt);
+    }
+    };
+
+    // values loader
+
+    function refreshValueList(){
+    valueSelect.innerHTML = "";
+    jsonData.values.forEach((_, i)=>{
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `Entry ${i + 1}`;
+    valueSelect.appendChild(opt);
+    });
+    }
+    document.getElementById("fonts").onchange = async e=>{
+    fontBuffers = {};
+
+    for (const f of e.target.files){
+    const key = f.name.replace(/\.(ttf|otf)$/i, "").toLowerCase();
+    fontBuffers[key] = await f.arrayBuffer();
+    }
+
+    refreshFontList();
+    };
+
+    const fontSelect = document.getElementById("f_font");
+
+    function refreshFontList(){
+    fontSelect.innerHTML = "";
+
+    // Default option
+    const def = document.createElement("option");
+    def.value = "";
+    def.textContent = "default";
+    fontSelect.appendChild(def);
+
+    // Uploaded fonts
+    Object.keys(fontBuffers).forEach(name=>{
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    fontSelect.appendChild(opt);
+    });
+    }
+
+    // ---------------- HELPERS ----------------
+
+    const hex = h=>{
+    h = h.replace("#", "");
+    return rgb(
+    parseInt(h.slice(0, 2), 16)/255,
+    parseInt(h.slice(2, 4), 16)/255,
+    parseInt(h.slice(4, 6), 16)/255
+    );
+    };
+
+    async function resolveFont(pdf, name){
+    if (!name) return await pdf.embedFont(StandardFonts.Helvetica);
+
+    const key = name.toLowerCase();
+    if (fontBuffers[key]){
+    return await pdf.embedFont(fontBuffers[key]);
+    }
+
+    // fallback
+    console.warn("Font missing, fallback to Helvetica:", name);
+    return await pdf.embedFont(StandardFonts.Helvetica);
+    }
+
+    // ------------PRESET LOADER-----------
+    document.getElementById("loadPreset").onchange = async e=>{
+    const file = e.target.files[0];
+    if (!file) return;
+
+    status.textContent = "Loading preset…";
+
+    const zip = await JSZip.loadAsync(file);
+
+    // Load template
+    templateBytes = await zip.file("template.pdf").async("arraybuffer");
+
+    // Load config
+    jsonData = JSON.parse(
+    await zip.file("config.json").async("string")
+    );
+
+    // Load fonts
+    fontBuffers = Object.create(null);
+
+    const fontsFolder = zip.folder("fonts");
+    if (fontsFolder) {
+    const fontFiles = fontsFolder.files;
+
+    for (const path in fontFiles) {
+    const file = fontFiles[path];
+
+    if (file.dir) continue;
+    if (!path.startsWith("fonts/")) continue;
+    if (!/\.(ttf|otf)$/i.test(path)) continue;
+
+    const cleanName = path
+    .replace("fonts/", "")
+    .replace(/\.(ttf|otf)$/i, "")
+    .toLowerCase();
+
+    fontBuffers[cleanName] = await file.async("arraybuffer");
+    }
+    }
+
+    // Refresh UI
+    refreshFontList();
+    refreshFieldList();
+    refreshValueList();
+
+    // Auto preview first entry
+    if (jsonData.values?.length){
+    const pdf = await buildPDF(jsonData.values[0]);
+    const bytes = await pdf.save();
+    await renderPdfToCanvas(bytes);
+    }
+
+    status.textContent = "Preset loaded ✔";
+    };
+
+    // ------------JSON EXPORTER-----------
+    document.getElementById("exportJson").onclick = ()=>{
+    if (!jsonData) return alert("No config loaded");
+
+    const blob = new Blob(
+    [JSON.stringify(jsonData, null, 2)],
+    { type: "application/json" }
+    );
+
+    saveAs(blob, "pdf-config.json");
+    };
+
+
+    // ---------------- VALUES EDITOR----------------
+    const valueSelect = document.getElementById("valueSelect");
+    const valueInputs = document.getElementById("valueInputs");
+
+    function dynamicFieldKeys(){
+    return Object.entries(jsonData.fields)
+    .filter(([_, f]) => f.type !== "static")
+    .map(([k]) => k);
+    }
+    // VALUES LOADER
+    function loadValue(index){
+    valueInputs.innerHTML = "";
+    const row = jsonData.values[index];
+    if (!row) return;
+
+    for (const key of dynamicFieldKeys()){
+    const label = document.createElement("label");
+    label.textContent = key;
+
+    const input = document.createElement("input");
+    input.dataset.key = key;
+    input.value = row[key] || "";
+
+    valueInputs.append(label, input);
+    }
+    }
+
+    function loadSelectedValue() {
+    loadValue(parseInt(valueSelect.value));
+    }
+
+    valueSelect.addEventListener("change", loadSelectedValue);
+    valueSelect.addEventListener("click", loadSelectedValue);
+    // save abd update
+    document.getElementById("saveValue").onclick = ()=>{
+    const idx = valueSelect.value;
+    const obj = {};
+
+    valueInputs.querySelectorAll("input").forEach(inp=>{
+    obj[inp.dataset.key] = inp.value;
+    });
+
+    jsonData.values[idx] = obj;
+    status.textContent = "Entry updated ✔";
+    };
+
+    // add new
+    document.getElementById("addValue").onclick = ()=>{
+    const obj = {};
+    dynamicFieldKeys().forEach(k => obj[k] = "");
+
+    jsonData.values.push(obj);
+    refreshValueList();
+
+    valueSelect.value = jsonData.values.length - 1;
+    loadValue(valueSelect.value);
+
+    status.textContent = "New entry added ✔";
+    };
+
+    // ---------------- FIELDS EDITOR ----------------
+    // parameters loader
+    function loadSelectedField() {
+    const f = jsonData.fields[fieldSelect.value];
+    if (!f) return;
+
+    f_name.value = fieldSelect.value;
+    f_type.value = f.type || "";
+    f_value.value = f.value || "";
+    f_font.value = f.font || "";
+    f_size.value = f.fontSize || 18;
+    f_color.value = f.color || "#000000";
+    f_align.value = f.align || "default";
+    f_x.value = f.posX;
+    f_y.value = f.posY;
+    }
+    fieldSelect.addEventListener("change", loadSelectedField);
+    fieldSelect.addEventListener("click", loadSelectedField);
+    // save and update
+    document.getElementById("saveField").onclick = ()=>{
+    const name = f_name.value.trim();
+    if (!name) return alert("Field name required");
+
+    jsonData.fields[name] = {
+    type: f_type.value || undefined,
+    value: f_value.value || undefined,
+    font: f_font.value || undefined,
+    fontSize: +f_size.value,
+    color: f_color.value,
+    align: f_align.value,
+    posX: +f_x.value,
+    posY: +f_y.value
+    };
+
+    refreshFieldList();
+    status.textContent = "Field saved ✔";
+    document.getElementById("previewBtn").click();
+    };
+    // add new
+    document.getElementById("addField").onclick = ()=>{
+    const name = prompt("New field name?");
+    if (!name) return;
+
+    jsonData.fields[name] = {
+    posX: 100,
+    posY: 100,
+    fontSize: 18,
+    color: "#000000",
+    align: "default"
+    };
+
+    refreshFieldList();
+    fieldSelect.value = name;
+    fieldSelect.onchange();
+    };
+
+    // ---------------- PRESET MANAGER ----------------
+    //SAVE PRESET
+
+    document.getElementById("exportPreset").onclick = async ()=>{
+    if (!templateBytes || !jsonData){
+    alert("Template PDF & config required");
+    return;
+    }
+
+    const zip = new JSZip();
+
+    // Template
+    zip.file("template.pdf", templateBytes);
+
+    // Config
+    zip.file("config.json", JSON.stringify(jsonData, null, 2));
+
+    // FontsfontBuffers = {};
+
+    const fontsFolder = zip.folder("fonts");
+    if (fontsFolder){
+    for (const [path, file] of Object.entries(fontsFolder.files)){
+    if (file.dir) continue; // skip folders
+
+    if (!/\.(ttf|otf)$/i.test(path)) continue;
+
+    const cleanName = path
+    .split("/")
+    .pop()
+    .replace(/\.(ttf|otf)$/i, "")
+    .toLowerCase();
+
+    fontBuffers[cleanName] = await file.async("arraybuffer");
+    }
+    }
+
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, "preset.pep");
+
+    status.textContent = "Preset exported ✔";
+    };
+
+    //LOAD PRESET
+    document.getElementById("loadPresetBtn").onclick = ()=>{
+    document.getElementById("loadPreset").click();
+    };
+
+
+    // ---------------- PDF CORE ----------------
+    async function buildPDF(values){
+    const pdf = await PDFDocument.load(templateBytes);
+    pdf.registerFontkit(fontkit);
+
+    const page = pdf.getPages()[0];
+    const embeddedFonts = {};
+
+    for (const [key, f] of Object.entries(jsonData.fields)) {
+
+    /* ---------- FONT ---------- */
+    if (f.font && !embeddedFonts[f.font]) {
+    embeddedFonts[f.font] = await resolveFont(pdf, f.font);
+    }
+    const font = embeddedFonts[f.font] ||
+    await pdf.embedFont(StandardFonts.Helvetica);
+
+    /* ---------- TEXT SOURCE ---------- */
+    let text = "";
+
+    if (f.type === "static") {
+    text = f.value ?? "";
+    } else {
+    text = values[key] ?? "";
+    }
+
+    if (!text) continue;
+
+    /* ---------- POSITION ---------- */
+    const size = f.fontSize || 18;
+    let x = f.posX;
+    const w = font.widthOfTextAtSize(String(text), size);
+
+    if (f.align === "centered" || f.align === "centred") x -= w / 2;
+    if (f.align === "righted") x -= w;
+
+    /* ---------- DRAW ---------- */
+    page.drawText(String(text), {
+    x,
+    y: f.posY,
+    size,
+    font,
+    color: hex(f.color || "#000000")
+    });
+    }
+
+    return pdf;
+    }
+
+    // ---------------- PREVIEW ----------------
+    document.getElementById("previewBtn").onclick = async ()=>{
+    if (!templateBytes || !jsonData){
+    alert("Upload template & JSON first");
+    return;
+    }
+
+    status.textContent = "Rendering preview…";
+
+    const pdf = await buildPDF(jsonData.values[0]);
+    const bytes = await pdf.save();
+
+    await renderPdfToCanvas(bytes);
+
+    status.textContent = "Preview ready ✔";
+    };
+
+    // ---------------- ZIP ----------------
+    document.getElementById("zipBtn").onclick = async ()=>{
+    if (typeof JSZip === "undefined"){
+    alert("JSZip not loaded");
+    return;
+    }
+    status.textContent = "Generating ZIP…";
+
+    const zip = new JSZip();
+    let i = 1;
+
+    for (const v of jsonData.values){
+    const pdf = await buildPDF(v);
+    zip.file(`${v.name || "file_"+i}.pdf`, await pdf.save());
+    i++;
+    }
+
+    saveAs(await zip.generateAsync({type: "blob"}), "certificates.zip");
+    status.textContent = "ZIP ready ✔";
+    };
+  </script>
+</body>
+</html>
