@@ -607,7 +607,13 @@
 
     // Load template
     templateBytes = await zip.file("template.pdf").async("arraybuffer");
+        // Page mid finders
+    const pdf = await PDFLib.PDFDocument.load(templateBytes);
+    const page = pdf.getPages()[0];
+    const size = page.getSize();
 
+    pageWidth = size.width;
+    pageHeight = size.height;
     // Load config
     jsonData = JSON.parse(
     await zip.file("config.json").async("string")
