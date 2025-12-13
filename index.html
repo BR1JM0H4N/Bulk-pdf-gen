@@ -6,7 +6,7 @@
   <title>Universal PDF Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>
-    eruda.init();
+    //eruda.init();
   </script>
   <style>
 :root{
@@ -273,6 +273,9 @@
     }
 
     .overlayCard {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
     background: var(--card);
     padding: 24px 28px;
     border-radius: 20px;
@@ -591,7 +594,8 @@
     document.getElementById("loadPreset").onchange = async e=>{
     const file = e.target.files[0];
     if (!file) return;
-
+    await new Promise(r => setTimeout(r, 0));
+    showPreviewOverlay("Loading preset....")
     status.textContent = "Loading preset…";
 
     const zip = await JSZip.loadAsync(file);
@@ -640,6 +644,7 @@
     }
 
     status.textContent = "Preset loaded ✔";
+    hidePreviewOverlay();
     };
 
     // ------------JSON EXPORTER-----------
@@ -882,45 +887,42 @@
 
     // ---------------- PRESET MANAGER ----------------
     //SAVE PRESET
-
     document.getElementById("exportPreset").onclick = async ()=>{
     if (!templateBytes || !jsonData){
     alert("Template PDF & config required");
     return;
     }
 
+    showPreviewOverlay("Exporting preset…");
+    await new Promise(r => setTimeout(r, 0));
+
+    try {
     const zip = new JSZip();
 
-    // Template
+    // ---- Template
     zip.file("template.pdf", templateBytes);
 
-    // Config
+    // ---- Config
     zip.file("config.json", JSON.stringify(jsonData, null, 2));
 
-    // FontsfontBuffers = {};
-
+    // ---- Fonts (FIXED)
     const fontsFolder = zip.folder("fonts");
-    if (fontsFolder){
-    for (const [path, file] of Object.entries(fontsFolder.files)){
-    if (file.dir) continue; // skip folders
 
-    if (!/\.(ttf|otf)$/i.test(path)) continue;
-
-    const cleanName = path
-    .split("/")
-    .pop()
-    .replace(/\.(ttf|otf)$/i, "")
-    .toLowerCase();
-
-    fontBuffers[cleanName] = await file.async("arraybuffer");
+    for (const [name, buffer] of Object.entries(fontBuffers)) {
+    fontsFolder.file(`${name}.ttf`, buffer);
+    // 👆 extension does NOT matter for pdf-lib
     }
-    }
-
 
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, "preset.pep");
 
     status.textContent = "Preset exported ✔";
+    } catch (e) {
+    console.error(e);
+    alert("Failed to export preset");
+    } finally {
+    hidePreviewOverlay();
+    }
     };
 
     //LOAD PRESET
