@@ -266,7 +266,7 @@
 
   <button id="saveValue">Save Entry</button>
   <button id="addValue" class="secondary">Add New Entry</button>
-
+  <button id="removeValue" class="secondary">Remove Selected Entry</button>
 
 
   <!-- field editor  -->
@@ -317,6 +317,7 @@
 
   <button id="saveField">Save Field</button>
   <button id="addField" class="secondary">Add New Field</button>
+  <button id="removeField" class="secondary">Remove Selected Field</button>
 
   <!-- LIBS (ORDER MATTERS) -->
   <script src="pdf-lib.min.js"></script>
@@ -598,6 +599,39 @@
     status.textContent = "New entry added ✔";
     };
 
+    // remove value
+
+    document.getElementById("removeValue").onclick = ()=>{
+    if (!jsonData) return;
+
+    const idx = Number(valueSelect.value);
+    if (isNaN(idx)) {
+    alert("No value selected");
+    return;
+    }
+
+    if (!confirm(`Delete Entry ${idx + 1}?`)) return;
+
+    jsonData.values.splice(idx, 1);
+
+    refreshValueList();
+
+    if (jsonData.values.length) {
+    valueSelect.value = Math.max(0, idx - 1);
+    loadValue(valueSelect.value);
+    } else {
+    valueInputs.innerHTML = "";
+    }
+
+    status.textContent = "Entry removed ✔";
+
+    if (jsonData.values.length) {
+    document.getElementById("previewBtn").click();
+    } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    };
+
     // ---------------- FIELDS EDITOR ----------------
     // parameters loader
     function loadSelectedField() {
@@ -654,6 +688,41 @@
     fieldSelect.onchange();
     };
 
+    // remove field
+
+    document.getElementById("removeField").onclick = ()=>{
+    if (!jsonData) return;
+
+    const key = fieldSelect.value;
+    if (!key) {
+    alert("No field selected");
+    return;
+    }
+
+    if (!confirm(`Delete field "${key}"?`)) return;
+
+    delete jsonData.fields[key];
+
+    refreshFieldList();
+
+    // Clear editor
+    fieldSelect.selectedIndex = -1;
+    f_name.value = "";
+    f_type.value = "";
+    f_value.value = "";
+    f_font.value = "";
+    f_size.value = "";
+    f_color.value = "#000000";
+    f_align.value = "default";
+    f_x.value = "";
+    f_y.value = "";
+
+    status.textContent = "Field removed ✔";
+
+    if (jsonData.values?.length) {
+    document.getElementById("previewBtn").click();
+    }
+    };
     // ---------------- PRESET MANAGER ----------------
     //SAVE PRESET
 
