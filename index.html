@@ -438,7 +438,7 @@
   <script src="filesaver.js"></script>
   <script src="pdf.min.js"></script>
   <script src="pdf.worker.min.js"></script>
-  <script>
+     <script>
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
 
     const canvas = document.getElementById("previewCanvas");
@@ -446,7 +446,7 @@
     const status = document.getElementById("status");
 
     let templateBytes = null;
-    let jsonData = '{"fields": { },"values": [ ]}';
+    let jsonData = {fields: {}, values: [{}]};
     let fontBuffers = {};
     let pageWidth = 0;
     let pageHeight = 0;
@@ -501,6 +501,13 @@
 
     document.getElementById("jsonFile").onchange = async e=>{
     jsonData = JSON.parse(await e.target.files[0].text());
+    // Ensure at least one value always exists
+    // 🔐 safety guarantee
+    if (!Array.isArray(jsonData.values) || !jsonData.values.length) {
+    jsonData.values = [{}];
+    }
+    if (!jsonData.fields) jsonData.fields = {};
+
     refreshFieldList();
     refreshValueList();
     };
@@ -607,13 +614,14 @@
 
     // Load template
     templateBytes = await zip.file("template.pdf").async("arraybuffer");
-        // Page mid finders
+    // Page mid finders
     const pdf = await PDFLib.PDFDocument.load(templateBytes);
     const page = pdf.getPages()[0];
     const size = page.getSize();
 
     pageWidth = size.width;
     pageHeight = size.height;
+
     // Load config
     jsonData = JSON.parse(
     await zip.file("config.json").async("string")
@@ -745,7 +753,10 @@
     if (!confirm(`Delete Entry ${idx + 1}?`)) return;
 
     jsonData.values.splice(idx, 1);
-
+    // Ensure at least one value always exists
+    if (!jsonData.values.length) {
+    jsonData.values.push({});
+    }
     refreshValueList();
 
     if (jsonData.values.length) {
@@ -1037,5 +1048,6 @@
     status.textContent = "ZIP ready ✔";
     };
   </script>
+
 </body>
 </html>
