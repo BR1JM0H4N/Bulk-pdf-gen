@@ -178,35 +178,21 @@
 
     /* ---------- CANVAS ---------- */
 
-    .canvasBox {
-  height: 460px;
-  background: #000;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--outline);
-}
+  .canvasBox{
+    height: 460px;
+    background: #000;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid var(--outline);
+    }
 
-/* NEW */
-.canvasWrap {
-  position: relative;
-  width: fit-content;
-  height: fit-content;
-}
-
-#previewCanvas,
-#gridCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: block;
-}
-
-#gridCanvas {
-  pointer-events: none;
-}
+    canvas{
+    max-width: 100%;
+    max-height: 100%;
+    }
 
     /* ---------- SEPARATORS ---------- */
 
@@ -325,7 +311,7 @@
   <div class="container">
 
     <div class="card">
-      <h1>>Universal PDF Generator v2.41.5-pr</h1>
+      <h1>>Universal PDF Generator v2.41.55-pr</h1>
       <small>JSON driven • Canvas preview • ZIP export</small> </br>
       <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener noreferrer" class="github-link">
   <i class="fa-brands fa-github"></i>
@@ -356,10 +342,10 @@
     <div class="card">
       <h1>Canvas Preview</h1>
      <div class="canvasBox">
-  <div class="canvasWrap">
+  
     <canvas id="previewCanvas"></canvas>
     <canvas id="gridCanvas"></canvas>
-  </div>
+  
      </div>
     </div>
 
