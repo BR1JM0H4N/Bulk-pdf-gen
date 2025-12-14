@@ -414,6 +414,10 @@
 
   <label>Y Position</label>
   <input id="f_y" type="number">
+  
+<label>Rotation (degrees)</label>
+<input id="f_rotation" type="number" value="0" step="1">
+  
   <div class="row">
     <button type="button" id="snapX">Snap X → Page Mid</button>
     <button type="button" id="snapY" class="secondary">Snap Y → Page Mid</button>
@@ -441,7 +445,7 @@
   <script src="pdf.min.js"></script>
   <script src="pdf.worker.min.js"></script>
      <script>
-    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+    const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
 
     const canvas = document.getElementById("previewCanvas");
     const ctx = canvas.getContext("2d");
@@ -792,6 +796,7 @@
     f_align.value = f.align || "default";
     f_x.value = f.posX;
     f_y.value = f.posY;
+    f_rotation.value = f.rotation ?? 0;
     }
     fieldSelect.addEventListener("change", loadSelectedField);
     fieldSelect.addEventListener("click", loadSelectedField);
@@ -808,7 +813,8 @@
     color: f_color.value,
     align: f_align.value,
     posX: +f_x.value,
-    posY: +f_y.value
+    posY: +f_y.value,
+    rotation: +f_rotation.value || 0 
     };
 
     refreshFieldList();
@@ -861,6 +867,7 @@
     f_align.value = "default";
     f_x.value = "";
     f_y.value = "";
+    f_rotation.value = 0;
 
     status.textContent = "Field removed ✔";
 
@@ -997,7 +1004,8 @@
     y: f.posY,
     size,
     font,
-    color: hex(f.color || "#000000")
+    color: hex(f.color || "#000000"),
+    rotate: degrees(f.rotation || 0)
     });
     }
 
