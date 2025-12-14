@@ -586,6 +586,7 @@
     // grid helper 
 
        function drawGridOverlay() {
+  console.log("GRID DRAW", pageWidth, pageHeight, canvas.width, canvas.height);
   if (!showGrid || !pageWidth || !pageHeight) return;
 
   const step = 50; // PDF units (change to 25 for finer grid)
