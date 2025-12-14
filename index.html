@@ -178,7 +178,7 @@
 
     /* ---------- CANVAS ---------- */
 
-  .canvasBox{
+    .canvasBox{
     height: 460px;
     background: #000;
     border-radius: 16px;
@@ -192,11 +192,6 @@
     canvas{
     max-width: 100%;
     max-height: 100%;
-    }
-    .ovrlp{
-      position: absolute; 
-      top: 0;           
-      left: 0;         
     }
 
     /* ---------- SEPARATORS ---------- */
@@ -316,7 +311,7 @@
   <div class="container">
 
     <div class="card">
-      <h1>>Universal PDF Generator v2.41.655-pr</h1>
+      <h1>Universal PDF Generator v2.41.23-pre</h1>
       <small>JSON driven • Canvas preview • ZIP export</small> </br>
       <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener noreferrer" class="github-link">
   <i class="fa-brands fa-github"></i>
@@ -346,12 +341,17 @@
     <button id="loadPresetBtn" class="secondary">Load Preset (.pep)</button>
     <div class="card">
       <h1>Canvas Preview</h1>
-     <div class="canvasBox">
-  <div class="canvasWrap">
-    <canvas class="ovrlp" id="previewCanvas"></canvas>
-    <canvas class="ovrlp" id="gridCanvas"></canvas>
-  </div>
-     </div>
+     <div class="canvasBox" style="position:relative">
+  
+  <canvas id="gridCanvas"
+          style="
+            position:relative;
+            inset:0;
+            pointer-events:none;
+            z-index:99999;           ">
+  </canvas>
+       <canvas id="previewCanvas"></canvas>
+</div>
     </div>
 
   </div>
