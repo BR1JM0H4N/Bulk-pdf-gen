@@ -449,7 +449,7 @@
     const canvas = document.getElementById("previewCanvas");
     const ctx = canvas.getContext("2d");
     const status = document.getElementById("status");
-
+    let showGrid = true;
     let templateBytes = null;
     let jsonData = {fields: {}, values: [{}]};
     let fontBuffers = {};
@@ -475,6 +475,7 @@
     };
 
     await page.render(renderContext).promise;
+      drawGridOverlay(); 
     }
 
     // ---------------- LOADERS ----------------
@@ -582,6 +583,58 @@
     );
     };
 
+    // grid helper 
+
+       function drawGridOverlay() {
+  if (!showGrid || !pageWidth || !pageHeight) return;
+
+  const step = 50; // PDF units (change to 25 for finer grid)
+
+  const scaleX = canvas.width / pageWidth;
+  const scaleY = canvas.height / pageHeight;
+
+  ctx.save();
+
+  ctx.lineWidth = 1;
+  ctx.font = "10px system-ui";
+  ctx.fillStyle = "rgba(255,255,255,.6)";
+
+  // Vertical grid (X)
+  for (let x = 0; x <= pageWidth; x += step) {
+    const cx = x * scaleX;
+
+    ctx.strokeStyle = x === 0
+      ? "rgba(255,0,0,.6)"    // Y-axis
+      : "rgba(255,255,255,.12)";
+
+    ctx.beginPath();
+    ctx.moveTo(cx, 0);
+    ctx.lineTo(cx, canvas.height);
+    ctx.stroke();
+
+    ctx.fillText(x, cx + 2, 12);
+  }
+
+  // Horizontal grid (Y)
+  for (let y = 0; y <= pageHeight; y += step) {
+    const cy = canvas.height - y * scaleY;
+
+    ctx.strokeStyle = y === 0
+      ? "rgba(0,255,0,.6)"    // X-axis
+      : "rgba(255,255,255,.12)";
+
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(canvas.width, cy);
+    ctx.stroke();
+
+    ctx.fillText(y, 4, cy - 2);
+  }
+
+  ctx.restore();
+       }
+       
+    // font resolve
     async function resolveFont(pdf, name){
     if (!name) return await pdf.embedFont(StandardFonts.Helvetica);
 
