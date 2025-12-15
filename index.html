@@ -311,7 +311,7 @@
   <div class="container">
 
     <div class="card">
-      <h1>Universal PDF Generator v2.41.23-pre</h1>
+      <h1>Universal PDF Generator v2.41-pre</h1>
       <small>JSON driven • Canvas preview • ZIP export</small> </br>
       <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener noreferrer" class="github-link">
   <i class="fa-brands fa-github"></i>
@@ -341,17 +341,9 @@
     <button id="loadPresetBtn" class="secondary">Load Preset (.pep)</button>
     <div class="card">
       <h1>Canvas Preview</h1>
-     <div class="canvasBox" style="position:relative">
-  
-  <canvas id="gridCanvas"
-          style="
-            
-            inset:0;
-            pointer-events:none;
-            z-index:99999;           ">
-  </canvas>
-       <canvas id="previewCanvas"></canvas>
-</div>
+      <div class="canvasBox">
+        <canvas id="previewCanvas"></canvas>
+      </div>
     </div>
 
   </div>
@@ -463,35 +455,28 @@
     let fontBuffers = {};
     let pageWidth = 0;
     let pageHeight = 0;
-    const pdfCanvas = document.getElementById("previewCanvas");
-    const pdfCtx = pdfCanvas.getContext("2d");
-
-    const gridCanvas = document.getElementById("gridCanvas");
-    const gridCtx = gridCanvas.getContext("2d");
 
     pdfjsLib.GlobalWorkerOptions.workerSrc =
     "pdf.worker.min.js";
 
-async function renderPdfToCanvas(pdfBytes) {
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-  const pdf = await loadingTask.promise;
+    async function renderPdfToCanvas(pdfBytes) {
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+    const pdf = await loadingTask.promise;
 
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1.8 });
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.8 });
 
-  pdfCanvas.width = viewport.width;
-  pdfCanvas.height = viewport.height;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-  gridCanvas.width = viewport.width;
-  gridCanvas.height = viewport.height;
+    const renderContext = {
+    canvasContext: ctx,
+    viewport: viewport
+    };
 
-  await page.render({
-    canvasContext: pdfCtx,
-    viewport
-  }).promise;
-
-  drawGridOverlay(); // 🔥 SAFE NOW
-}
+    await page.render(renderContext).promise;
+      drawGridOverlay(); 
+    }
 
     // ---------------- LOADERS ----------------
     document.getElementById("template").onchange = async e=>{
@@ -600,50 +585,55 @@ async function renderPdfToCanvas(pdfBytes) {
 
     // grid helper 
 
-function drawGridOverlay() {
-  if (!pageWidth || !pageHeight) return;
+       function drawGridOverlay() {
+  console.log("GRID DRAW", pageWidth, pageHeight, canvas.width, canvas.height);
+  if (!showGrid || !pageWidth || !pageHeight) return;
 
-  gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+  const step = 50; // PDF units (change to 25 for finer grid)
 
-  const step = 50;
-  const scaleX = gridCanvas.width / pageWidth;
-  const scaleY = gridCanvas.height / pageHeight;
+  const scaleX = canvas.width / pageWidth;
+  const scaleY = canvas.height / pageHeight;
 
-  gridCtx.font = "11px system-ui";
-  gridCtx.lineWidth = 1;
+  ctx.save();
 
-  // Vertical lines
+  ctx.lineWidth = 1;
+  ctx.font = "10px system-ui";
+  ctx.fillStyle = "rgba(255,255,255,.6)";
+
+  // Vertical grid (X)
   for (let x = 0; x <= pageWidth; x += step) {
     const cx = x * scaleX;
-    gridCtx.strokeStyle =
-      x === 0 ? "rgba(255,0,0,.8)" : "rgba(255,255,255,.25)";
 
-    gridCtx.beginPath();
-    gridCtx.moveTo(cx, 0);
-    gridCtx.lineTo(cx, gridCanvas.height);
-    gridCtx.stroke();
+    ctx.strokeStyle = x === 0
+      ? "rgba(255,0,0,.6)"    // Y-axis
+      : "rgba(255,255,255,.12)";
 
-    gridCtx.fillStyle = "#fff";
-    gridCtx.fillText(x, cx + 2, 12);
+    ctx.beginPath();
+    ctx.moveTo(cx, 0);
+    ctx.lineTo(cx, canvas.height);
+    ctx.stroke();
+
+    ctx.fillText(x, cx + 2, 12);
   }
 
-  // Horizontal lines
+  // Horizontal grid (Y)
   for (let y = 0; y <= pageHeight; y += step) {
-    const cy = gridCanvas.height - y * scaleY;
-    gridCtx.strokeStyle =
-      y === 0 ? "rgba(0,255,0,.8)" : "rgba(255,255,255,.25)";
+    const cy = canvas.height - y * scaleY;
 
-    gridCtx.beginPath();
-    gridCtx.moveTo(0, cy);
-    gridCtx.lineTo(gridCanvas.width, cy);
-    gridCtx.stroke();
+    ctx.strokeStyle = y === 0
+      ? "rgba(0,255,0,.6)"    // X-axis
+      : "rgba(255,255,255,.12)";
 
-    gridCtx.fillStyle = "#fff";
-    gridCtx.fillText(y, 4, cy - 2);
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(canvas.width, cy);
+    ctx.stroke();
+
+    ctx.fillText(y, 4, cy - 2);
   }
 
-  console.log("GRID DRAW OK");
-}
+  ctx.restore();
+       }
        
     // font resolve
     async function resolveFont(pdf, name){
