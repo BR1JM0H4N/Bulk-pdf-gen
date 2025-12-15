@@ -594,7 +594,25 @@
     return await pdf.embedFont(fontBuffers[key]);
     }
       
-    // grid plotter
+      
+    // fallback
+    console.warn("Font missing, fallback to Helvetica:", name);
+    return await pdf.embedFont(StandardFonts.Helvetica);
+    }
+    // overlay
+
+    const overlay = document.getElementById("previewOverlay");
+
+    function showPreviewOverlay(text = "Rendering preview…") {
+    overlay.querySelector(".overlayText").textContent = text;
+    overlay.classList.add("active");
+    }
+
+    function hidePreviewOverlay() {
+    overlay.classList.remove("active");
+    }
+
+        // grid plotter
       function drawPageGrid(stepDistance = 50) {
   if (!canvas || !pageWidth || !pageHeight) {
     console.warn("Grid skipped: missing canvas or page size");
@@ -678,23 +696,7 @@
   console.log("GRID DRAWN → step:", stepDistance);
       }
 
-      
-    // fallback
-    console.warn("Font missing, fallback to Helvetica:", name);
-    return await pdf.embedFont(StandardFonts.Helvetica);
-    }
-    // overlay
-
-    const overlay = document.getElementById("previewOverlay");
-
-    function showPreviewOverlay(text = "Rendering preview…") {
-    overlay.querySelector(".overlayText").textContent = text;
-    overlay.classList.add("active");
-    }
-
-    function hidePreviewOverlay() {
-    overlay.classList.remove("active");
-    }
+   
 
     // ------------PRESET LOADER-----------
     document.getElementById("loadPreset").onchange = async e=>{
