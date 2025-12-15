@@ -6,7 +6,7 @@
   <title>Universal PDF Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>
-    //eruda.init();
+    eruda.init();
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
@@ -311,7 +311,7 @@
   <div class="container">
 
     <div class="card">
-      <h1>Universal PDF Generator v2.11-pre</h1>
+      <h1>Universal PDF Generator v2.12-pre</h1>
       <small>JSON driven • Canvas preview • ZIP export</small> </br>
       <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener noreferrer" class="github-link">
   <i class="fa-brands fa-github"></i>
@@ -327,7 +327,7 @@
       <label style="margin-top:12px">Fonts (TTF/OTF)</label>
       <input type="file" id="fonts" multiple accept=".ttf,.otf">
 
-      <button id="previewBtn">Preview First Entry</button>
+      
       <button id="zipBtn" class="secondary">Generate ZIP</button>
 
       <small id="status">Idle</small>
@@ -345,7 +345,11 @@
         <canvas id="previewCanvas"></canvas>
       </div>
     </div>
+  </div>
 
+  <div class="row">
+    <button id="previewBtn">Preview First Entry</button>
+    <button id="gridPlot" onclick="drawPageGrid(100);" >Plot Grid</button>
   </div>
   <!-- value editor  -->
   <hr style="opacity:.15;margin:16px 0">
@@ -589,7 +593,92 @@
     if (fontBuffers[key]){
     return await pdf.embedFont(fontBuffers[key]);
     }
+      
+    // grid plotter
+      function drawPageGrid(stepDistance = 50) {
+  if (!canvas || !pageWidth || !pageHeight) {
+    console.warn("Grid skipped: missing canvas or page size");
+    return;
+  }
 
+  const ctx = canvas.getContext("2d");
+
+  const scaleX = canvas.width / pageWidth;
+  const scaleY = canvas.height / pageHeight;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  // ---------- GRID LINES ----------
+  for (let x = 0; x <= pageWidth; x += stepDistance) {
+    const px = x * scaleX;
+
+    // White base (thick)
+    ctx.strokeStyle = "rgba(255,255,255,.95)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, canvas.height);
+    ctx.stroke();
+
+    // Black top (thin)
+    ctx.strokeStyle = "rgba(0,0,0,.9)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, canvas.height);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= pageHeight; y += stepDistance) {
+    const py = canvas.height - (y * scaleY);
+
+    ctx.strokeStyle = "rgba(255,255,255,.95)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(canvas.width, py);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(0,0,0,.9)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, py);
+    ctx.lineTo(canvas.width, py);
+    ctx.stroke();
+  }
+
+  // ---------- LABELS ----------
+  const fontSize = 18;
+  ctx.font = `bold ${fontSize}px system-ui`;
+  ctx.textBaseline = "middle";
+
+  function drawLabel(text, x, y) {
+    const pad = 6;
+    const w = ctx.measureText(text).width + pad * 2;
+    const h = fontSize + pad * 2;
+
+    ctx.fillStyle = "rgba(255,255,255,.95)";
+    ctx.fillRect(x, y - h / 2, w, h);
+
+    ctx.fillStyle = "#000";
+    ctx.fillText(text, x + pad, y);
+  }
+
+  for (let x = 0; x <= pageWidth; x += stepDistance) {
+    drawLabel(x, x * scaleX + 4, canvas.height - 18);
+  }
+
+  for (let y = 0; y <= pageHeight; y += stepDistance) {
+    drawLabel(y, 4, canvas.height - (y * scaleY));
+  }
+
+  ctx.restore();
+
+  console.log("GRID DRAWN → step:", stepDistance);
+      }
+
+      
     // fallback
     console.warn("Font missing, fallback to Helvetica:", name);
     return await pdf.embedFont(StandardFonts.Helvetica);
