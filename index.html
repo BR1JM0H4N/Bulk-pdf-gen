@@ -318,6 +318,76 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
+<script>
+(() => {
+  const THEME_KEY = "app-theme-accent";
+
+  const style = document.createElement("style");
+  document.head.appendChild(style);
+
+  function setVars(vars) {
+    const css = Object.entries(vars)
+      .map(([k, v]) => `--${k}:${v};`)
+      .join("");
+    style.textContent = `:root{${css}}`;
+  }
+
+  function applyTheme() {
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+
+    const base = dark
+      ? {
+          bg: "#0b0f14",
+          surface: "#151a21",
+          card: "#1b2030",
+          text: "#e5e7eb",
+          muted: "#9ca3af",
+          border: "rgba(255,255,255,.12)"
+        }
+      : {
+          bg: "#f4f6fb",
+          surface: "#ffffff",
+          card: "#eef1f7",
+          text: "#111827",
+          muted: "#4b5563",
+          border: "rgba(0,0,0,.12)"
+        };
+
+    const accent =
+      localStorage.getItem(THEME_KEY) || "auto";
+
+    setVars({
+      ...base,
+      accent
+    });
+
+    // browser UI
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = base.bg;
+
+    // native controls
+    document.documentElement.style.accentColor = accent;
+  }
+
+  // public API
+  window.Theme = {
+    setAccent(color) {
+      localStorage.setItem(THEME_KEY, color);
+      applyTheme();
+    },
+    resetAccent() {
+      localStorage.removeItem(THEME_KEY);
+      applyTheme();
+    }
+  };
+
+  applyTheme();
+
+  matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", applyTheme);
+})();
+</script>
   
 <body>
   <div class="container">
