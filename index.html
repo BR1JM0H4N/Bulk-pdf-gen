@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8b5cf6">
   <title>Universal PDF Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>
@@ -306,7 +308,17 @@
     }
   </style>
 </head>
-
+<!-- service worker -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => console.log("PWA Service Worker registered"))
+      .catch(err => console.error("SW failed", err));
+  });
+}
+</script>
+  
 <body>
   <div class="container">
 
