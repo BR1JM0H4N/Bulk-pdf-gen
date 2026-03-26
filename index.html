@@ -3,1233 +3,1432 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#8b5cf6">
-  <title>Universal PDF Generator</title>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>
-   // eruda.init();
-  </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <title>PDF Forge — Universal PDF Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-:root{
-    --bg: #0b0f14;
-    --surface: #121821;
-    --surface-2: #171f2b;
-    --outline: #2a3240;
+    /* ── TOKENS ────────────────────────────────────── */
+    :root {
+      --bg:        #07090e;
+      --s0:        #0d1018;
+      --s1:        #121620;
+      --s2:        #181e2c;
+      --s3:        #1e2535;
+      --border:    rgba(255,255,255,.065);
+      --border-hi: rgba(240,165,0,.35);
 
-    --primary: #8b5cf6;
-    --primary-2: #6366f1;
-    --on-primary: #ffffff;
+      --gold:      #f0a500;
+      --gold-glow: rgba(240,165,0,.18);
+      --gold-dim:  rgba(240,165,0,.1);
+      --green:     #34d399;
+      --red:       #f87171;
+      --blue:      #60a5fa;
 
-    --text: #e5e7eb;
-    --muted: #9ca3af;
+      --text:      #dde4f0;
+      --text-2:    #a0aec0;
+      --muted:     #4a5568;
+
+      --sidebar:   260px;
+      --hh:        54px;
+      --r:         10px;
+      --r-lg:      16px;
+      --r-xl:      22px;
+
+      --font-head: 'Syne', sans-serif;
+      --font-ui:   'DM Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
     }
 
-    *{
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+    /* ── RESET ────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 13.5px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+    button { font-family: var(--font-ui); cursor: pointer; }
+    input, select { font-family: var(--font-ui); }
+
+    /* ── SCROLLBAR ────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 99px; }
+
+    /* ── APP SHELL ────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── HEADER ───────────────────────────────────── */
+    .header {
+      height: var(--hh);
+      min-height: var(--hh);
+      background: var(--s0);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      position: relative;
+      z-index: 10;
+    }
+    .logo {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--gold);
+      border-radius: 6px;
+      display: grid; place-items: center;
+      color: #000;
+      font-size: 14px;
+    }
+    .logo-sub {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      margin-left: 4px;
+    }
+    .header-divider { width: 1px; height: 20px; background: var(--border); }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 11.5px;
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      min-width: 180px;
+      transition: border-color .2s;
+    }
+    .status-pill.ok { border-color: rgba(52,211,153,.3); }
+    .status-pill.busy { border-color: rgba(240,165,0,.3); }
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+    .status-pill.ok .status-dot { background: var(--green); }
+    .status-pill.busy .status-dot { background: var(--gold); animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: .4; } }
+
+    .header-spacer { flex: 1; }
+    .header-actions { display: flex; gap: 6px; }
+
+    /* ── BODY LAYOUT ──────────────────────────────── */
+    .body { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── SIDEBAR ──────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar);
+      min-width: var(--sidebar);
+      background: var(--s0);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .sidebar-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: var(--s3);
+      color: var(--text-2);
+      padding: 1px 6px;
+      border-radius: 99px;
+      letter-spacing: 0;
     }
 
-    body{
-    margin: 0;
-    background: radial-gradient(circle at top, #0e1424, #080b12);
-    color: var(--text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto;
-    min-height: 100dvh;
-    padding: 16px;
+    /* Drop Zones */
+    .drop-zone {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--r);
+      padding: 12px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 8px;
     }
-
-    /* ---------- LAYOUT ---------- */
-
-    .container{
-    max-width: 1200px;
-    margin: auto;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
     }
-
-    @media (min-width: 900px){
-    .container{
-    grid-template-columns: 420px 1fr;
+    .drop-zone:hover { border-color: var(--border-hi); background: var(--gold-dim); }
+    .drop-zone.loaded { border-color: rgba(52,211,153,.4); border-style: solid; background: rgba(52,211,153,.05); }
+    .drop-zone-icon {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: var(--s2);
+      border-radius: var(--r-sm, 6px);
+      display: grid; place-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      transition: all .2s;
     }
+    .drop-zone.loaded .drop-zone-icon { background: rgba(52,211,153,.15); color: var(--green); }
+    .drop-zone:hover .drop-zone-icon { color: var(--gold); background: var(--gold-dim); }
+    .drop-zone-text { flex: 1; min-width: 0; }
+    .drop-zone-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drop-zone-sub { font-size: 10.5px; color: var(--muted); }
+
+    /* ── BUTTONS ──────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--r);
+      border: none;
+      font-size: 12.5px;
+      font-weight: 500;
+      transition: all .15s;
+      white-space: nowrap;
     }
-
-    /* ---------- CARD ---------- */
-
-    .card{
-    background: linear-gradient(180deg, var(--surface), var(--surface-2));
-    border-radius: 20px;
-    padding: 18px;
-    box-shadow:
-    0 10px 30px rgba(0,0,0,.35),
-    inset 0 1px 0 rgba(255,255,255,.03);
-    border: 1px solid var(--outline);
+    .btn:active { transform: scale(.97); }
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(240,165,0,.3);
     }
-
-    /* ---------- HEADINGS ---------- */
-
-    h1{
-    margin: 0 0 8px;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: .3px;
+    .btn-primary:hover { background: #fdb81e; box-shadow: 0 6px 20px rgba(240,165,0,.4); }
+    .btn-ghost {
+      background: var(--s2);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
-
-    small{
-    color: var(--muted);
-    font-size: 12px;
+    .btn-ghost:hover { background: var(--s3); border-color: rgba(255,255,255,.12); }
+    .btn-danger {
+      background: rgba(248,113,113,.12);
+      color: var(--red);
+      border: 1px solid rgba(248,113,113,.2);
     }
-
-    /* ---------- FORMS ---------- */
-
-    label{
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    margin-top: 14px;
-    display: block;
+    .btn-danger:hover { background: rgba(248,113,113,.2); }
+    .btn-success {
+      background: rgba(52,211,153,.12);
+      color: var(--green);
+      border: 1px solid rgba(52,211,153,.2);
     }
+    .btn-success:hover { background: rgba(52,211,153,.2); }
+    .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+    .btn-full { width: 100%; }
+    .btn-icon { padding: 8px; border-radius: var(--r); }
 
-    input,
-    select,
-    button{
-    width: 100%;
-    margin-top: 6px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    border: 1px solid var(--outline);
-    background: #0f1522;
-    color: var(--text);
-    font-size: 14px;
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── FORM CONTROLS ────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .field-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-2);
+      letter-spacing: .3px;
     }
-
-    /* Remove ugly default arrows on mobile */
-    select{
-    appearance: none;
-    background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-    background-position:
-    calc(100% - 18px) 55%,
-    calc(100% - 12px) 55%;
-    background-size: 6px 6px;
-    background-repeat: no-repeat;
+    .input, .select-ctrl {
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-size: 12.5px;
+      padding: 7px 10px;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      font-family: var(--font-ui);
     }
-
-    /* ---------- COLOR INPUT ---------- */
-
-    input[type="color"]{
-    height: 46px;
-    padding: 0;
-    background: #0f1522;
-    cursor: pointer;
+    .input:focus, .select-ctrl:focus { border-color: var(--gold); background: var(--s2); }
+    .input-mono { font-family: var(--font-mono); font-size: 12px; }
+    .select-ctrl {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a5568'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 10px) center;
+      padding-right: 28px;
     }
-
-    input[type="color"]::-webkit-color-swatch-wrapper{
-    padding: 4px;
+    input[type="color"].input {
+      padding: 2px 4px;
+      height: 34px;
+      cursor: pointer;
     }
+    input[type="color"].input::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"].input::-webkit-color-swatch { border-radius: 5px; border: none; }
+    .field-row { display: flex; gap: 8px; }
+    .field-row .field { flex: 1; }
 
-    input[type="color"]::-webkit-color-swatch{
-    border-radius: 10px;
-    border: none;
+    /* ── CANVAS AREA ──────────────────────────────── */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
     }
-
-    input[type="color"]::-moz-color-swatch{
-    border-radius: 10px;
-    border: none;
+    .canvas-toolbar {
+      padding: 8px 14px;
+      background: var(--s0);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-
-    /* ---------- BUTTONS ---------- */
-
-    button{
-    border: none;
-    background: linear-gradient(135deg, var(--primary), var(--primary-2));
-    color: var(--on-primary);
-    font-weight: 600;
-    letter-spacing: .3px;
-    box-shadow:
-    0 6px 18px rgba(139,92,246,.35);
-    transition: transform .1s ease, box-shadow .1s ease;
+    .toolbar-sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+    .canvas-wrapper {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+      background-size: 32px 32px;
     }
-
-    button:active{
-    transform: scale(.97);
-    box-shadow: 0 3px 10px rgba(139,92,246,.4);
+    #previewCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
+      border-radius: 4px;
+      transition: opacity .3s;
     }
-
-    button.secondary{
-    background: #1b2333;
-    color: var(--text);
-    box-shadow: none;
-    border: 1px solid var(--outline);
+    .canvas-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
     }
+    .canvas-empty i { font-size: 40px; opacity: .25; }
 
-    /* ---------- ROW BUTTONS ---------- */
-
-    .row{
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
+    /* ── EDITORS PANEL ────────────────────────────── */
+    .editors-panel {
+      height: 300px;
+      min-height: 300px;
+      background: var(--s0);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
     }
-
-    .row button{
-    flex: 1;
+    .tabs-bar {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      gap: 2px;
+      background: var(--bg);
     }
-
-    /* ---------- CANVAS ---------- */
-
-    .canvasBox{
-    height: 460px;
-    background: #000;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border: 1px solid var(--outline);
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 10px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s;
+      margin-bottom: -1px;
     }
+    .tab-btn:hover { color: var(--text-2); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-content { display: none; flex: 1; overflow-y: auto; padding: 12px 14px; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 8px; }
 
-    canvas{
-    max-width: 100%;
-    max-height: 100%;
-    }
+    /* Values/Fields editor layout */
+    .editor-layout { display: flex; gap: 12px; height: 100%; }
+    .editor-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .editor-col-narrow { width: 200px; min-width: 160px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+    .editor-col-wide { flex: 2; display: flex; flex-direction: column; gap: 8px; }
 
-    /* ---------- SEPARATORS ---------- */
+    /* Dynamic value inputs */
+    #valueInputs .dyn-field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+    #valueInputs .dyn-field label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
 
-    hr{
-    border: none;
-    height: 1px;
-    background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255,255,255,.15),
-    transparent
-    );
-    margin: 18px 0;
-    }
-
-    /* ---------- MOBILE POLISH ---------- */
-
-    @media (max-width: 600px){
-    h1{ font-size: 17px;
-    }
-    input, select, button{ font-size: 15px;
-    }
-    }
+    /* ── DIALOG ───────────────────────────────────── */
     dialog {
-    width: min(95vw, 900px);
-    border: none;
-    border-radius: 16px;
-    padding: 16px;
-    background: var(--card);
-    color: #fff;
+      background: var(--s1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      color: var(--text);
+      padding: 0;
+      max-width: min(96vw, 860px);
+      width: 100%;
+      max-height: 85vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 30px 80px rgba(0,0,0,.7);
     }
+    dialog::backdrop { background: rgba(0,0,0,.8); backdrop-filter: blur(6px); }
+    .dialog-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dialog-title { font-family: var(--font-head); font-size: 16px; font-weight: 700; }
+    .dialog-body { flex: 1; overflow: auto; padding: 14px 18px; }
+    .dialog-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 
-    dialog::backdrop {
-    background: rgba(0,0,0,.9);
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    thead th {
+      position: sticky; top: 0;
+      background: var(--s2);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--border);
     }
+    tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--font-mono); font-size: 12px; }
+    tbody tr:hover td { background: var(--gold-dim); }
+    tbody tr:last-child td { border-bottom: none; }
 
-    .tableWrap {
-    max-height: 60vh;
-    overflow: auto;
-    margin: 12px 0;
-    border-radius: 12px;
+    /* ── LOADING OVERLAY ──────────────────────────── */
+    #loadingOverlay {
+      position: fixed; inset: 0;
+      background: rgba(7,9,14,.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
     }
-
-    table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
+    #loadingOverlay.active { display: flex; }
+    .loading-card {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 32px 40px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      min-width: 220px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
     }
-
-    th, td {
-    padding: 10px;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-    text-align: left;
-    }
-
-    th {
-    position: sticky;
-    top: 0;
-    background: #1b2040;
-    font-weight: 600;
-    }
-
-    tr:hover td {
-    background: rgba(139,92,246,.12);
-    }
-    #previewOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.7);
-    backdrop-filter: blur(6px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    }
-
-    #previewOverlay.active {
-    display: flex;
-    }
-
-    .overlayCard {
-    display: flex;
-    flex-direction: row;
-    gap: 15px;
-    background: var(--card);
-    padding: 24px 28px;
-    border-radius: 20px;
-    text-align: center;
-    box-shadow: 0 20px 50px rgba(0,0,0,.5);
-    }
-
-    .overlayText {
-    margin-top: 14px;
-    font-size: 14px;
-    color: var(--muted);
-    }
-
-    /* Material-style spinner */
     .spinner {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    border: 4px solid rgba(255,255,255,.15);
-    border-top-color: var(--accent);
-    animation: spin 1s linear infinite;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 3px solid var(--s3);
+      border-top-color: var(--gold);
+      animation: spin 1s linear infinite;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--text-2); font-family: var(--font-mono); }
 
-    @keyframes spin {
-    to { transform: rotate(360deg);
+    /* ── TOAST ────────────────────────────────────── */
+    #toastContainer {
+      position: fixed; bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 10000; pointer-events: none;
     }
+    .toast {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 10px 14px;
+      font-size: 12.5px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      animation: toastIn .25s ease forwards;
+      max-width: 280px;
+    }
+    .toast.success { border-color: rgba(52,211,153,.3); }
+    .toast.error { border-color: rgba(248,113,113,.3); }
+    .toast.busy { border-color: rgba(240,165,0,.3); }
+    .toast i { font-size: 13px; }
+    .toast.success i { color: var(--green); }
+    .toast.error i { color: var(--red); }
+    .toast.busy i { color: var(--gold); }
+    @keyframes toastIn { from { opacity:0; transform: translateY(12px) scale(.97); } to { opacity:1; transform: none; } }
+    @keyframes toastOut { to { opacity:0; transform: translateY(6px) scale(.97); } }
+
+    /* ── MISC ─────────────────────────────────────── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      padding: 2px 8px;
+      background: var(--s2);
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+    }
+    .chip.on { background: rgba(52,211,153,.1); color: var(--green); border-color: rgba(52,211,153,.25); }
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .empty-state i { font-size: 28px; opacity: .3; }
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* ── RESPONSIVE ───────────────────────────────── */
+    @media (max-width: 768px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100vh; }
+      .body { flex-direction: column; overflow: visible; }
+      .sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); }
+      .canvas-area { min-height: 320px; }
+      .editors-panel { height: auto; min-height: 0; }
+      :root { --sidebar: 100%; }
+    }
+    @media (max-width: 520px) {
+      .header { padding: 0 10px; }
+      .logo-sub { display: none; }
+      .status-pill { min-width: 120px; }
     }
   </style>
 </head>
-<!-- service worker -->
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js")
-      .then(() => console.log("PWA Service Worker registered"))
-      .catch(err => console.error("SW failed", err));
-  });
-}
-</script>
-
-<script>
-(() => {
-  const THEME_KEY = "app-theme-accent";
-
-  const style = document.createElement("style");
-  document.head.appendChild(style);
-
-  function setVars(vars) {
-    const css = Object.entries(vars)
-      .map(([k, v]) => `--${k}:${v};`)
-      .join("");
-    style.textContent = `:root{${css}}`;
-  }
-
-  function applyTheme() {
-    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-
-    const base = dark
-      ? {
-          bg: "#0b0f14",
-          surface: "#151a21",
-          card: "#1b2030",
-          text: "#e5e7eb",
-          muted: "#9ca3af",
-          border: "rgba(255,255,255,.12)"
-        }
-      : {
-          bg: "#f4f6fb",
-          surface: "#ffffff",
-          card: "#eef1f7",
-          text: "#111827",
-          muted: "#4b5563",
-          border: "rgba(0,0,0,.12)"
-        };
-
-    const accent =
-      localStorage.getItem(THEME_KEY) || "auto";
-
-    setVars({
-      ...base,
-      accent
-    });
-
-    // browser UI
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = base.bg;
-
-    // native controls
-    document.documentElement.style.accentColor = accent;
-  }
-
-  // public API
-  window.Theme = {
-    setAccent(color) {
-      localStorage.setItem(THEME_KEY, color);
-      applyTheme();
-    },
-    resetAccent() {
-      localStorage.removeItem(THEME_KEY);
-      applyTheme();
-    }
-  };
-
-  applyTheme();
-
-  matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", applyTheme);
-})();
-</script>
-  
 <body>
-  <div class="container">
 
-    <div class="card">
-      <h1>Universal PDF Generator v2.12-pre</h1>
-      <small>JSON driven • Canvas preview • ZIP export</small> </br>
-      <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener noreferrer" class="github-link">
-  <i class="fa-brands fa-github"></i>
-  BR1JM0H4N
+<!-- ═══════════════════ APP SHELL ═══════════════════ -->
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon"><i class="fa-solid fa-file-pdf"></i></div>
+      PDF Forge
+      <span class="logo-sub">v2.12</span>
+    </div>
+    <div class="header-divider"></div>
+    <div class="status-pill" id="statusPill">
+      <span class="status-dot"></span>
+      <span id="statusText">Idle — no files loaded</span>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="exportJson" title="Export JSON config">
+        <i class="fa-solid fa-file-code"></i> Export JSON
+      </button>
+      <a href="https://github.com/BR1JM0H4N/Bulk-pdf-gen.git" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">
+        <i class="fa-brands fa-github"></i> Source
       </a>
+    </div>
+  </header>
 
-      <label>Template PDF</label>
-      <input type="file" id="template" accept=".pdf">
+  <!-- BODY -->
+  <div class="body">
 
-      <label style="margin-top:12px">JSON File</label>
-      <input type="file" id="jsonFile" accept=".json">
+    <!-- ─── SIDEBAR ─────────────────────────── -->
+    <aside class="sidebar">
 
-      <label style="margin-top:12px">Fonts (TTF/OTF)</label>
-      <input type="file" id="fonts" multiple accept=".ttf,.otf">
+      <!-- File Inputs -->
+      <div class="sidebar-section">
+        <div class="section-label">Inputs</div>
 
-      
-      <button id="zipBtn" class="secondary">Generate ZIP</button>
+        <div class="drop-zone" id="dzTemplate" title="Click to select template PDF">
+          <input type="file" id="template" accept=".pdf">
+          <div class="drop-zone-icon"><i class="fa-regular fa-file-pdf"></i></div>
+          <div class="drop-zone-text">
+            <div class="drop-zone-title" id="templateName">Template PDF</div>
+            <div class="drop-zone-sub">Click to upload .pdf</div>
+          </div>
+        </div>
 
-      <small id="status">Idle</small>
-      <button id="exportJson" class="secondary">Export Config JSON</button>
+        <div class="drop-zone" id="dzJson" title="Click to select config JSON">
+          <input type="file" id="jsonFile" accept=".json">
+          <div class="drop-zone-icon"><i class="fa-solid fa-brackets-curly"></i></div>
+          <div class="drop-zone-text">
+            <div class="drop-zone-title" id="jsonName">Config JSON</div>
+            <div class="drop-zone-sub">Click to upload .json</div>
+          </div>
+        </div>
+
+        <div class="drop-zone" id="dzFonts" title="Click to select font files">
+          <input type="file" id="fonts" multiple accept=".ttf,.otf">
+          <div class="drop-zone-icon"><i class="fa-solid fa-font"></i></div>
+          <div class="drop-zone-text">
+            <div class="drop-zone-title" id="fontsName">Custom Fonts</div>
+            <div class="drop-zone-sub">Click to upload .ttf / .otf</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="sidebar-section">
+        <div class="section-label">Presets</div>
+        <button class="btn btn-primary btn-full" id="exportPreset">
+          <i class="fa-solid fa-box-archive"></i> Export Preset (.pep)
+        </button>
+        <div style="height:6px"></div>
+        <button class="btn btn-ghost btn-full" id="loadPresetBtn">
+          <i class="fa-solid fa-folder-open"></i> Load Preset (.pep)
+        </button>
+        <input type="file" id="loadPreset" accept=".pep" hidden>
+      </div>
+
+      <!-- Stats -->
+      <div class="sidebar-section">
+        <div class="section-label">Session Info</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11.5px; color:var(--text-2);">Fields</span>
+            <span class="chip" id="chipFields">—</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11.5px; color:var(--text-2);">Entries</span>
+            <span class="chip" id="chipValues">—</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11.5px; color:var(--text-2);">Fonts loaded</span>
+            <span class="chip" id="chipFonts">0</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11.5px; color:var(--text-2);">Page size</span>
+            <span class="chip" id="chipPage">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- spacer -->
+      <div style="flex:1"></div>
+
+      <div class="sidebar-section" style="font-size:10.5px; color:var(--muted); line-height:1.6;">
+        JSON-driven bulk PDF generation. Load a template + config, edit fields &amp; values, then export a ZIP of all PDFs.
+      </div>
+
+    </aside>
+
+    <!-- ─── CANVAS AREA ────────────────────── -->
+    <main class="canvas-area">
+      <div class="canvas-toolbar">
+        <button class="btn btn-primary btn-sm" id="previewBtn">
+          <i class="fa-solid fa-eye"></i> Preview
+        </button>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-ghost btn-sm" id="gridPlot">
+          <i class="fa-solid fa-grid-4"></i> Plot Grid
+        </button>
+        <div class="toolbar-sep"></div>
+        <button class="btn btn-ghost btn-sm" id="zipBtn">
+          <i class="fa-solid fa-file-zipper"></i> Generate ZIP
+        </button>
+        <div class="header-spacer"></div>
+        <span style="font-size:11px; color:var(--muted); font-family:var(--font-mono);" id="canvasInfo"></span>
+      </div>
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <div class="canvas-empty" id="canvasEmpty">
+          <i class="fa-regular fa-image"></i>
+          <div>Upload a template PDF and click <strong style="color:var(--text-2)">Preview</strong></div>
+        </div>
+        <canvas id="previewCanvas" style="display:none"></canvas>
+      </div>
+    </main>
+
+  </div><!-- /body -->
+
+  <!-- ─── EDITORS PANEL ─────────────────────── -->
+  <div class="editors-panel">
+    <div class="tabs-bar">
+      <button class="tab-btn active" data-tab="values">
+        <i class="fa-solid fa-table-cells"></i> Values Editor
+        <span class="badge" id="tabValBadge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="fields">
+        <i class="fa-solid fa-sliders"></i> Field Editor
+        <span class="badge" id="tabFldBadge">0</span>
+      </button>
     </div>
 
-    <hr style="opacity:.15;margin:16px 0">
+    <!-- VALUES TAB -->
+    <div class="tab-content active" id="tab-values">
+      <div class="editor-layout">
 
-    <button id="exportPreset">Export Preset (.pep)</button>
-    <input type="file" id="loadPreset" accept=".pep" hidden>
-    <button id="loadPresetBtn" class="secondary">Load Preset (.pep)</button>
-    <div class="card">
-      <h1>Canvas Preview</h1>
-      <div class="canvasBox">
-        <canvas id="previewCanvas"></canvas>
+        <!-- Entry selector -->
+        <div class="editor-col-narrow">
+          <div class="field">
+            <label class="field-label">Select Entry</label>
+            <select class="select-ctrl" id="valueSelect">
+              <option value="" disabled selected hidden>— select —</option>
+            </select>
+          </div>
+          <button class="btn btn-success btn-sm" id="saveValue"><i class="fa-solid fa-floppy-disk"></i> Save Entry</button>
+          <hr class="divider">
+          <button class="btn btn-ghost btn-sm" id="showAllValues"><i class="fa-solid fa-table"></i> View All</button>
+          <button class="btn btn-ghost btn-sm" id="addValue"><i class="fa-solid fa-plus"></i> Add Entry</button>
+          <button class="btn btn-danger btn-sm" id="removeValue"><i class="fa-solid fa-trash"></i> Remove</button>
+        </div>
+
+        <!-- Dynamic value inputs -->
+        <div class="editor-col-wide" id="valueInputs">
+          <div class="empty-state">
+            <i class="fa-solid fa-table-cells-large"></i>
+            Load a JSON config to edit values
+          </div>
+        </div>
+
       </div>
     </div>
-  </div>
 
-  <div class="row">
-    <button id="previewBtn">Preview First Entry</button>
-    <button id="gridPlot" onclick="drawPageGrid(35);" >Plot Grid</button>
-  </div>
-  <!-- value editor  -->
-  <hr style="opacity:.15;margin:16px 0">
+    <!-- FIELDS TAB -->
+    <div class="tab-content" id="tab-fields">
+      <div class="editor-layout">
 
-  <h1>Values Editor</h1>
+        <!-- Field selector + actions -->
+        <div class="editor-col-narrow">
+          <div class="field">
+            <label class="field-label">Select Field</label>
+            <select class="select-ctrl" id="fieldSelect">
+              <option value="" disabled selected hidden>— select —</option>
+            </select>
+          </div>
+          <button class="btn btn-success btn-sm" id="saveField"><i class="fa-solid fa-floppy-disk"></i> Save Field</button>
+          <hr class="divider">
+          <button class="btn btn-ghost btn-sm" id="addField"><i class="fa-solid fa-plus"></i> New Field</button>
+          <button class="btn btn-danger btn-sm" id="removeField"><i class="fa-solid fa-trash"></i> Remove</button>
+        </div>
 
-  <label>Select Entry</label>
-  <select id="valueSelect">
-  <option value="" disabled selected hidden>- select -</option>
-</select>
-  <div id="valueInputs"></div>
+        <!-- Field properties -->
+        <div class="editor-col" id="fieldPropsArea">
+          <div class="empty-state">
+            <i class="fa-solid fa-sliders"></i>
+            Select a field to edit its properties
+          </div>
+        </div>
 
-  <button id="saveValue">Save Entry</button>
-  <div class="row">
-    <button id="showAllValues" class="secondary">Show All Values</button>
-    <button id="addValue" class="secondary">Add New Entry</button>
-    <button id="removeValue" class="secondary">Remove Selected Entry</button>
-  </div>
-
-  <dialog id="valuesDialog">
-    <h2>All Values</h2>
-    <div class="tableWrap">
-      <table id="valuesTable"></table>
-    </div>
-    <button id="closeValuesDialog" class="secondary">Close</button>
-  </dialog>
-  <!-- field editor  -->
-  <hr style="opacity:.15;margin:16px 0">
-
-  <h1>Field Editor</h1>
-
-  <label>Choose Field</label>
-<select id="fieldSelect">
-  <option value="" disabled selected hidden>- select -</option>
-</select>
-  <label style="margin-top:10px">Field Name</label>
-  <input id="f_name" placeholder="name / id / Dean">
-
-  <label>Type</label>
-  <select id="f_type">
-    <option value="">Dynamic</option>
-    <option value="static">Static</option>
-  </select>
-
-  <label>Static Value</label>
-  <input id="f_value" placeholder="Used if type=static">
-
-  <label>Font</label>
-  <select id="f_font"></select>
-<div class="row">
-  <label>Font Size</label>
-  <input id="f_size" type="number">
-
-  <label>Color</label>
-  <input id="f_color" type="color">
-</div>
-  <label>Align</label>
-  <select id="f_align">
-    <option value="default">Default</option>
-    <option value="centered">Centered</option>
-    <option value="righted">Righted</option>
-  </select>
-<div class="row">
-  <label>X Position</label>
-  <input id="f_x" type="number">
-
-  <label>Y Position</label>
-  <input id="f_y" type="number">
-</div>
-<label>Rotation (degrees)</label>
-<input id="f_rotation" type="number" value="0" step="1">
-  <div class="row">
-    <button type="button" id="snapX">Snap X → Page Mid</button>
-    <button type="button" id="snapY" class="secondary">Snap Y → Page Mid</button>
-  </div>
-
-  <button id="saveField">Save Field</button>
-  <div class="row">
-    <button id="addField" class="secondary">Add New Field</button>
-    <button id="removeField" class="secondary">Remove Selected Field</button>
-  </div>
-  <div id="previewOverlay">
-    <div class="overlayCard">
-      <div class="spinner"></div>
-      <div class="overlayText">
-        Rendering preview…
       </div>
     </div>
+
+  </div><!-- /editors-panel -->
+
+</div><!-- /app -->
+
+<!-- ═══════════════════ DIALOGS ═══════════════════ -->
+
+<!-- Values Table Dialog -->
+<dialog id="valuesDialog">
+  <div class="dialog-header">
+    <span class="dialog-title"><i class="fa-solid fa-table" style="margin-right:8px;color:var(--gold)"></i>All Entries</span>
+    <button class="btn btn-ghost btn-sm btn-icon" id="closeValuesDialog"><i class="fa-solid fa-xmark"></i></button>
   </div>
+  <div class="dialog-body">
+    <table id="valuesTable"></table>
+  </div>
+  <div class="dialog-footer">
+    <button class="btn btn-ghost btn-sm" id="closeValuesDialog2">Close</button>
+  </div>
+</dialog>
 
-  <!-- LIBS (ORDER MATTERS) -->
-  <script src="pdf-lib.min.js"></script>
-  <script src="fontkit.umd.min.js"></script>
-  <script src="jszip.min.js"></script>
-  <script src="filesaver.js"></script>
-  <script src="pdf.min.js"></script>
-  <script src="pdf.worker.min.js"></script>
-     <script>
-    const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Processing…</div>
+  </div>
+</div>
 
-    const canvas = document.getElementById("previewCanvas");
-    const ctx = canvas.getContext("2d");
-    const status = document.getElementById("status");
+<!-- Toast Container -->
+<div id="toastContainer"></div>
 
-    let templateBytes = null;
-    let jsonData = {fields: {}, values: [{}]};
-    let fontBuffers = {};
-    let pageWidth = 0;
-    let pageHeight = 0;
+<!-- ═══════════════════ LIBRARIES ═══════════════════ -->
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "pdf.worker.min.js";
+<!-- ═══════════════════ APP LOGIC ═══════════════════ -->
+<script>
+"use strict";
+// ─── GLOBALS ──────────────────────────────────────
+const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
 
-    async function renderPdfToCanvas(pdfBytes) {
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
-    const pdf = await loadingTask.promise;
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 1.8 });
+const canvas      = document.getElementById("previewCanvas");
+const ctx         = canvas.getContext("2d");
+const canvasEmpty = document.getElementById("canvasEmpty");
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+let templateBytes = null;
+let jsonData      = { fields: {}, values: [{}] };
+let fontBuffers   = {};
+let pageWidth     = 0;
+let pageHeight    = 0;
 
-    const renderContext = {
-    canvasContext: ctx,
-    viewport: viewport
-    };
+// ─── TOAST ────────────────────────────────────────
+function toast(msg, type = "success", duration = 3000) {
+  const icons = { success: "fa-circle-check", error: "fa-circle-exclamation", busy: "fa-circle-notch fa-spin" };
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}"></i><span>${msg}</span>`;
+  document.getElementById("toastContainer").appendChild(el);
+  setTimeout(() => {
+    el.style.animation = "toastOut .25s ease forwards";
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
 
-    await page.render(renderContext).promise;
-    }
+// ─── STATUS ───────────────────────────────────────
+function setStatus(msg, state = "") {
+  const pill = document.getElementById("statusPill");
+  const txt  = document.getElementById("statusText");
+  txt.textContent = msg;
+  pill.className  = "status-pill " + state;
+}
 
-    // ---------------- LOADERS ----------------
-    document.getElementById("template").onchange = async e=>{
-    templateBytes = await e.target.files[0].arrayBuffer();
-    // Page mid finders
-    const pdf = await PDFLib.PDFDocument.load(templateBytes);
-    const page = pdf.getPages()[0];
-    const size = page.getSize();
+// ─── CHIPS ────────────────────────────────────────
+function refreshChips() {
+  const fCount = Object.keys(jsonData.fields).length;
+  const vCount = jsonData.values.length;
+  const foCount = Object.keys(fontBuffers).length;
+  document.getElementById("chipFields").textContent = fCount || "—";
+  document.getElementById("chipValues").textContent = vCount || "—";
+  document.getElementById("chipFonts").textContent  = foCount;
+  document.getElementById("tabValBadge").textContent = vCount;
+  document.getElementById("tabFldBadge").textContent = fCount;
+  if (pageWidth && pageHeight)
+    document.getElementById("chipPage").textContent =
+      `${Math.round(pageWidth)} × ${Math.round(pageHeight)}`;
+}
 
-    pageWidth = size.width;
-    pageHeight = size.height;
-    };
-    document.getElementById("snapX").onclick = ()=>{
-    if (!pageWidth){
-    alert("Load template first");
-    return;
-    }
-    f_x.value = Math.round(pageWidth / 2);
-    };
+// ─── TABS ─────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
 
-    document.getElementById("snapY").onclick = ()=>{
-    if (!pageHeight){
-    alert("Load template first");
-    return;
-    }
-    f_y.value = Math.round(pageHeight / 2);
-    };
+// ─── OVERLAY ──────────────────────────────────────
+function showOverlay(text = "Processing…") {
+  document.getElementById("loadingText").textContent = text;
+  document.getElementById("loadingOverlay").classList.add("active");
+}
+function hideOverlay() {
+  document.getElementById("loadingOverlay").classList.remove("active");
+}
 
-    document.getElementById("jsonFile").onchange = async e=>{
-    jsonData = JSON.parse(await e.target.files[0].text());
-    // Ensure at least one value always exists
-    // 🔐 safety guarantee
-    if (!Array.isArray(jsonData.values) || !jsonData.values.length) {
-    jsonData.values = [{}];
-    }
-    if (!jsonData.fields) jsonData.fields = {};
+// ─── CANVAS HELPER ────────────────────────────────
+async function renderPdfToCanvas(pdfBytes) {
+  const task     = pdfjsLib.getDocument({ data: pdfBytes });
+  const pdf      = await task.promise;
+  const page     = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 1.8 });
 
-    refreshFieldList();
-    refreshValueList();
-    };
-    // field parameters editor
-    const fieldSelect = document.getElementById("fieldSelect");
+  canvas.width  = viewport.width;
+  canvas.height = viewport.height;
 
-    function refreshFieldList(){
-    fieldSelect.innerHTML = "";
-    for (const k in jsonData.fields){
-    const opt = document.createElement("option");
-    opt.value = k;
-    opt.textContent = k;
-    fieldSelect.appendChild(opt);
-    }
-    };
+  await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // values loader
+  canvasEmpty.style.display = "none";
+  canvas.style.display = "block";
+  document.getElementById("canvasInfo").textContent =
+    `${Math.round(viewport.width)} × ${Math.round(viewport.height)} px`;
+}
 
-    function refreshValueList(){
-    valueSelect.innerHTML = "";
-    jsonData.values.forEach((_, i)=>{
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = `Entry ${i + 1}`;
-    valueSelect.appendChild(opt);
-    });
-    }
-    document.getElementById("fonts").onchange = async e=>{
-    fontBuffers = {};
+// ─── FILE LOADERS ─────────────────────────────────
+function markDropZone(id, filename) {
+  const dz = document.getElementById(id);
+  const title = dz.querySelector(".drop-zone-title");
+  if (filename) { dz.classList.add("loaded"); title.textContent = filename; }
+  else          { dz.classList.remove("loaded"); }
+}
 
-    for (const f of e.target.files){
+document.getElementById("template").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  templateBytes = await f.arrayBuffer();
+  const pdf  = await PDFLib.PDFDocument.load(templateBytes);
+  const pg   = pdf.getPages()[0];
+  const size = pg.getSize();
+  pageWidth  = size.width;
+  pageHeight = size.height;
+  markDropZone("dzTemplate", f.name);
+  setStatus("Template loaded: " + f.name, "ok");
+  refreshChips();
+  toast("Template PDF loaded", "success");
+};
+
+document.getElementById("jsonFile").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  jsonData = JSON.parse(await f.text());
+  if (!Array.isArray(jsonData.values) || !jsonData.values.length) jsonData.values = [{}];
+  if (!jsonData.fields) jsonData.fields = {};
+  markDropZone("dzJson", f.name);
+  refreshFieldList();
+  refreshValueList();
+  setStatus("Config loaded: " + f.name, "ok");
+  refreshChips();
+  toast("JSON config loaded", "success");
+};
+
+document.getElementById("fonts").onchange = async e => {
+  fontBuffers = {};
+  for (const f of e.target.files) {
     const key = f.name.replace(/\.(ttf|otf)$/i, "").toLowerCase();
     fontBuffers[key] = await f.arrayBuffer();
-    }
-
-    refreshFontList();
-    };
-
-    const fontSelect = document.getElementById("f_font");
-
-    function refreshFontList(){
-    fontSelect.innerHTML = "";
-
-    // Default option
-    const def = document.createElement("option");
-    def.value = "";
-    def.textContent = "default";
-    fontSelect.appendChild(def);
-
-    // Uploaded fonts
-    Object.keys(fontBuffers).forEach(name=>{
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    fontSelect.appendChild(opt);
-    });
-    }
-
-    // ---------------- HELPERS ----------------
-
-    const hex = h=>{
-    h = h.replace("#", "");
-    return rgb(
-    parseInt(h.slice(0, 2), 16)/255,
-    parseInt(h.slice(2, 4), 16)/255,
-    parseInt(h.slice(4, 6), 16)/255
-    );
-    };
-
-    async function resolveFont(pdf, name){
-    if (!name) return await pdf.embedFont(StandardFonts.Helvetica);
-
-    const key = name.toLowerCase();
-    if (fontBuffers[key]){
-    return await pdf.embedFont(fontBuffers[key]);
-    }
-      
-      
-    // fallback
-    console.warn("Font missing, fallback to Helvetica:", name);
-    return await pdf.embedFont(StandardFonts.Helvetica);
-    }
-    // overlay
-
-    const overlay = document.getElementById("previewOverlay");
-
-    function showPreviewOverlay(text = "Rendering preview…") {
-    overlay.querySelector(".overlayText").textContent = text;
-    overlay.classList.add("active");
-    }
-
-    function hidePreviewOverlay() {
-    overlay.classList.remove("active");
-    }
-
-        // grid plotter
-      function drawPageGrid(stepDistance = 50) {
-  if (!canvas || !pageWidth || !pageHeight) {
-    console.warn("Grid skipped: missing canvas or page size");
-    return;
   }
+  const names = Object.keys(fontBuffers);
+  markDropZone("dzFonts", names.length + " font(s) loaded");
+  refreshFontList();
+  refreshChips();
+  toast(`${names.length} font(s) loaded`, "success");
+};
 
-  const ctx = canvas.getContext("2d");
+// ─── FONT LIST ────────────────────────────────────
+function refreshFontList() {
+  const sel = document.getElementById("f_font");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">default (Helvetica)</option>';
+  Object.keys(fontBuffers).forEach(name => {
+    const o = document.createElement("option");
+    o.value = o.textContent = name;
+    sel.appendChild(o);
+  });
+}
 
+// ─── HELPERS ──────────────────────────────────────
+const hex = h => {
+  h = h.replace("#", "");
+  return rgb(
+    parseInt(h.slice(0,2),16)/255,
+    parseInt(h.slice(2,4),16)/255,
+    parseInt(h.slice(4,6),16)/255
+  );
+};
+
+async function resolveFont(pdf, name) {
+  if (!name) return pdf.embedFont(StandardFonts.Helvetica);
+  const key = name.toLowerCase();
+  if (fontBuffers[key]) return pdf.embedFont(fontBuffers[key]);
+  console.warn("Font missing, fallback:", name);
+  return pdf.embedFont(StandardFonts.Helvetica);
+}
+
+// ─── BUILD PDF ────────────────────────────────────
+async function buildPDF(values) {
+  const pdf = await PDFDocument.load(templateBytes);
+  pdf.registerFontkit(fontkit);
+  const page = pdf.getPages()[0];
+  const embeddedFonts = {};
+
+  for (const [key, f] of Object.entries(jsonData.fields)) {
+    if (f.font && !embeddedFonts[f.font])
+      embeddedFonts[f.font] = await resolveFont(pdf, f.font);
+    const font = embeddedFonts[f.font] || await pdf.embedFont(StandardFonts.Helvetica);
+
+    let text = f.type === "static" ? (f.value ?? "") : (values[key] ?? "");
+    if (!text) continue;
+
+    const size = f.fontSize || 18;
+    let x = f.posX;
+    const w = font.widthOfTextAtSize(String(text), size);
+    if (f.align === "centered" || f.align === "centred") x -= w / 2;
+    if (f.align === "righted") x -= w;
+
+    page.drawText(String(text), {
+      x, y: f.posY, size, font,
+      color: hex(f.color || "#000000"),
+      rotate: degrees(f.rotation || 0)
+    });
+  }
+  return pdf;
+}
+
+// ─── PREVIEW ──────────────────────────────────────
+document.getElementById("previewBtn").onclick = async () => {
+  if (!templateBytes || !jsonData) return toast("Upload template & JSON first", "error");
+  showOverlay("Rendering preview…");
+  await new Promise(r => setTimeout(r, 0));
+  try {
+    const pdf   = await buildPDF(jsonData.values[0]);
+    const bytes = await pdf.save();
+    await renderPdfToCanvas(bytes);
+    setStatus("Preview ready", "ok");
+    toast("Preview rendered", "success");
+  } catch (err) {
+    console.error(err);
+    toast("Preview failed: " + err.message, "error");
+  } finally { hideOverlay(); }
+};
+
+// ─── GRID ─────────────────────────────────────────
+document.getElementById("gridPlot").onclick = () => drawPageGrid(35);
+
+function drawPageGrid(step = 50) {
+  if (!canvas || !pageWidth || !pageHeight) return toast("Load template first", "error");
   const scaleX = canvas.width / pageWidth;
   const scaleY = canvas.height / pageHeight;
 
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(1,0,0,1,0,0);
 
-  // ---------- GRID LINES ----------
-  for (let x = 0; x <= pageWidth; x += stepDistance) {
+  const drawLine = (x1,y1,x2,y2,color,width) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  };
+
+  for (let x = 0; x <= pageWidth; x += step) {
     const px = x * scaleX;
-
-    // White base (thick)
-    ctx.strokeStyle = "rgba(255,255,255,.95)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, canvas.height);
-    ctx.stroke();
-
-    // Black top (thin)
-    ctx.strokeStyle = "rgba(0,0,0,.9)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, canvas.height);
-    ctx.stroke();
+    drawLine(px,0,px,canvas.height,"rgba(255,255,255,.9)",2.5);
+    drawLine(px,0,px,canvas.height,"rgba(0,0,0,.75)",1);
   }
-
-  for (let y = 0; y <= pageHeight; y += stepDistance) {
+  for (let y = 0; y <= pageHeight; y += step) {
     const py = canvas.height - (y * scaleY);
-
-    ctx.strokeStyle = "rgba(255,255,255,.95)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, py);
-    ctx.lineTo(canvas.width, py);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(0,0,0,.9)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, py);
-    ctx.lineTo(canvas.width, py);
-    ctx.stroke();
+    drawLine(0,py,canvas.width,py,"rgba(255,255,255,.9)",2.5);
+    drawLine(0,py,canvas.width,py,"rgba(0,0,0,.75)",1);
   }
 
-  // ---------- LABELS ----------
-  const fontSize = 18;
-  ctx.font = `bold ${fontSize}px system-ui`;
+  const fSize = 16;
+  ctx.font = `bold ${fSize}px system-ui`;
   ctx.textBaseline = "middle";
 
-  function drawLabel(text, x, y) {
-    const pad = 6;
-    const w = ctx.measureText(text).width + pad * 2;
-    const h = fontSize + pad * 2;
-
-    ctx.fillStyle = "rgba(255,255,255,.95)";
-    ctx.fillRect(x, y - h / 2, w, h);
-
+  const drawLabel = (text, x, y) => {
+    const pad = 5, w = ctx.measureText(text).width + pad*2, h = fSize + pad*2;
+    ctx.fillStyle = "rgba(255,220,80,.92)";
+    ctx.fillRect(x, y - h/2, w, h);
     ctx.fillStyle = "#000";
-    ctx.fillText(text, x + pad, y);
-  }
+    ctx.fillText(text, x+pad, y);
+  };
 
-  for (let x = 0; x <= pageWidth; x += stepDistance) {
-    drawLabel(x, x * scaleX + 4, canvas.height - 18);
-  }
-
-  for (let y = 0; y <= pageHeight; y += stepDistance) {
-    drawLabel(y, 4, canvas.height - (y * scaleY));
-  }
+  for (let x = 0; x <= pageWidth; x += step)
+    drawLabel(x, x*scaleX+3, canvas.height-16);
+  for (let y = 0; y <= pageHeight; y += step)
+    drawLabel(y, 3, canvas.height-(y*scaleY));
 
   ctx.restore();
+  toast("Grid plotted at step " + step, "success");
+}
 
-  console.log("GRID DRAWN → step:", stepDistance);
-      }
+// ─── ZIP ──────────────────────────────────────────
+document.getElementById("zipBtn").onclick = async () => {
+  if (!templateBytes || !jsonData?.values?.length) return toast("Load template & JSON first", "error");
+  showOverlay("Generating PDFs…");
+  setStatus("Generating ZIP…", "busy");
+  try {
+    const zip = new JSZip();
+    let i = 1;
+    for (const v of jsonData.values) {
+      const pdf = await buildPDF(v);
+      zip.file(`${v.name || "file_" + i}.pdf`, await pdf.save());
+      document.getElementById("loadingText").textContent = `Generating ${i} / ${jsonData.values.length}…`;
+      i++;
+    }
+    saveAs(await zip.generateAsync({ type: "blob" }), "certificates.zip");
+    setStatus(`ZIP exported — ${i-1} PDFs`, "ok");
+    toast(`ZIP ready — ${i-1} PDFs`, "success");
+  } catch (err) {
+    console.error(err);
+    toast("ZIP failed: " + err.message, "error");
+  } finally { hideOverlay(); }
+};
 
-   
+// ─── EXPORT JSON ──────────────────────────────────
+document.getElementById("exportJson").onclick = () => {
+  if (!jsonData) return toast("No config loaded", "error");
+  const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: "application/json" });
+  saveAs(blob, "pdf-config.json");
+  toast("Config JSON exported", "success");
+};
 
-    // ------------PRESET LOADER-----------
-    document.getElementById("loadPreset").onchange = async e=>{
-    const file = e.target.files[0];
-    if (!file) return;
-    await new Promise(r => setTimeout(r, 0));
-    showPreviewOverlay("Loading preset....")
-    status.textContent = "Loading preset…";
+// ─── PRESETS ──────────────────────────────────────
+document.getElementById("exportPreset").onclick = async () => {
+  if (!templateBytes || !jsonData) return toast("Template PDF & config required", "error");
+  showOverlay("Exporting preset…");
+  try {
+    const zip = new JSZip();
+    zip.file("template.pdf", templateBytes);
+    zip.file("config.json", JSON.stringify(jsonData, null, 2));
+    const ff = zip.folder("fonts");
+    for (const [name, buf] of Object.entries(fontBuffers))
+      ff.file(`${name}.ttf`, buf);
+    saveAs(await zip.generateAsync({ type: "blob" }), "preset.pep");
+    toast("Preset exported", "success");
+  } catch (err) {
+    console.error(err); toast("Export failed", "error");
+  } finally { hideOverlay(); }
+};
 
+document.getElementById("loadPresetBtn").onclick = () =>
+  document.getElementById("loadPreset").click();
+
+document.getElementById("loadPreset").onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  showOverlay("Loading preset…");
+  setStatus("Loading preset…", "busy");
+  try {
     const zip = await JSZip.loadAsync(file);
-
-    // Load template
     templateBytes = await zip.file("template.pdf").async("arraybuffer");
-    // Page mid finders
-    const pdf = await PDFLib.PDFDocument.load(templateBytes);
-    const page = pdf.getPages()[0];
-    const size = page.getSize();
 
-    pageWidth = size.width;
+    const pdf  = await PDFLib.PDFDocument.load(templateBytes);
+    const pg   = pdf.getPages()[0];
+    const size = pg.getSize();
+    pageWidth  = size.width;
     pageHeight = size.height;
 
-    // Load config
-    jsonData = JSON.parse(
-    await zip.file("config.json").async("string")
-    );
+    jsonData = JSON.parse(await zip.file("config.json").async("string"));
 
-    // Load fonts
     fontBuffers = Object.create(null);
-
-    const fontsFolder = zip.folder("fonts");
-    if (fontsFolder) {
-    const fontFiles = fontsFolder.files;
-
-    for (const path in fontFiles) {
-    const file = fontFiles[path];
-
-    if (file.dir) continue;
-    if (!path.startsWith("fonts/")) continue;
-    if (!/\.(ttf|otf)$/i.test(path)) continue;
-
-    const cleanName = path
-    .replace("fonts/", "")
-    .replace(/\.(ttf|otf)$/i, "")
-    .toLowerCase();
-
-    fontBuffers[cleanName] = await file.async("arraybuffer");
-    }
+    const ff = zip.folder("fonts");
+    if (ff) {
+      for (const path in ff.files) {
+        const f = ff.files[path];
+        if (f.dir || !path.startsWith("fonts/") || !/\.(ttf|otf)$/i.test(path)) continue;
+        const clean = path.replace("fonts/","").replace(/\.(ttf|otf)$/i,"").toLowerCase();
+        fontBuffers[clean] = await f.async("arraybuffer");
+      }
     }
 
-    // Refresh UI
+    markDropZone("dzTemplate", "preset/template.pdf");
+    markDropZone("dzJson", "preset/config.json");
+    if (Object.keys(fontBuffers).length)
+      markDropZone("dzFonts", Object.keys(fontBuffers).length + " font(s)");
+
     refreshFontList();
     refreshFieldList();
     refreshValueList();
-
-    // Auto preview first entry
-    if (jsonData.values?.length){
-    const pdf = await buildPDF(jsonData.values[0]);
-    const bytes = await pdf.save();
-    await renderPdfToCanvas(bytes);
-    }
-
-    status.textContent = "Preset loaded ✔";
-    hidePreviewOverlay();
-    };
-
-    // ------------JSON EXPORTER-----------
-    document.getElementById("exportJson").onclick = ()=>{
-    if (!jsonData) return alert("No config loaded");
-
-    const blob = new Blob(
-    [JSON.stringify(jsonData, null, 2)],
-    { type: "application/json" }
-    );
-
-    saveAs(blob, "pdf-config.json");
-    };
-
-
-    // ---------------- VALUES EDITOR----------------
-    const valueSelect = document.getElementById("valueSelect");
-    const valueInputs = document.getElementById("valueInputs");
-
-    function dynamicFieldKeys(){
-    return Object.entries(jsonData.fields)
-    .filter(([_, f]) => f.type !== "static")
-    .map(([k]) => k);
-    }
-    // VALUES LOADER
-    function loadValue(index){
-    valueInputs.innerHTML = "";
-    const row = jsonData.values[index];
-    if (!row) return;
-
-    for (const key of dynamicFieldKeys()){
-    const label = document.createElement("label");
-    label.textContent = key;
-
-    const input = document.createElement("input");
-    input.dataset.key = key;
-    input.value = row[key] || "";
-
-    valueInputs.append(label, input);
-    }
-    }
-
-    function loadSelectedValue() {
-    loadValue(parseInt(valueSelect.value));
-    }
-
-    valueSelect.addEventListener("change", loadSelectedValue);
-    valueSelect.addEventListener("click", loadSelectedValue);
-    // save abd update
-    document.getElementById("saveValue").onclick = ()=>{
-    const idx = valueSelect.value;
-    const obj = {};
-
-    valueInputs.querySelectorAll("input").forEach(inp=>{
-    obj[inp.dataset.key] = inp.value;
-    });
-
-    jsonData.values[idx] = obj;
-    status.textContent = "Entry updated ✔";
-    };
-
-    // add new
-    document.getElementById("addValue").onclick = ()=>{
-    const obj = {};
-    dynamicFieldKeys().forEach(k => obj[k] = "");
-
-    jsonData.values.push(obj);
-    refreshValueList();
-
-    valueSelect.value = jsonData.values.length - 1;
-    loadValue(valueSelect.value);
-
-    status.textContent = "New entry added ✔";
-    };
-
-    // remove value
-
-    document.getElementById("removeValue").onclick = ()=>{
-    if (!jsonData) return;
-
-    const idx = Number(valueSelect.value);
-    if (isNaN(idx)) {
-    alert("No value selected");
-    return;
-    }
-
-    if (!confirm(`Delete Entry ${idx + 1}?`)) return;
-
-    jsonData.values.splice(idx, 1);
-    // Ensure at least one value always exists
-    if (!jsonData.values.length) {
-    jsonData.values.push({});
-    }
-    refreshValueList();
-
-    if (jsonData.values.length) {
-    valueSelect.value = Math.max(0, idx - 1);
-    loadValue(valueSelect.value);
-    } else {
-    valueInputs.innerHTML = "";
-    }
-
-    status.textContent = "Entry removed ✔";
-
-    if (jsonData.values.length) {
-    document.getElementById("previewBtn").click();
-    } else {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-    };
-
-    // ---------------- FIELDS EDITOR ----------------
-    // parameters loader
-    function loadSelectedField() {
-    const f = jsonData.fields[fieldSelect.value];
-    if (!f) return;
-
-    f_name.value = fieldSelect.value;
-    f_type.value = f.type || "";
-    f_value.value = f.value || "";
-    f_font.value = f.font || "";
-    f_size.value = f.fontSize || 18;
-    f_color.value = f.color || "#000000";
-    f_align.value = f.align || "default";
-    f_x.value = f.posX;
-    f_y.value = f.posY;
-    f_rotation.value = f.rotation ?? 0;
-    }
-    fieldSelect.addEventListener("change", loadSelectedField);
-    fieldSelect.addEventListener("click", loadSelectedField);
-    // save and update
-    document.getElementById("saveField").onclick = ()=>{
-    const name = f_name.value.trim();
-    if (!name) return alert("Field name required");
-
-    jsonData.fields[name] = {
-    type: f_type.value || undefined,
-    value: f_value.value || undefined,
-    font: f_font.value || undefined,
-    fontSize: +f_size.value,
-    color: f_color.value,
-    align: f_align.value,
-    posX: +f_x.value,
-    posY: +f_y.value,
-    rotation: +f_rotation.value || 0 
-    };
-
-    refreshFieldList();
-    status.textContent = "Field saved ✔";
-    document.getElementById("previewBtn").click();
-    };
-    // add new
-    document.getElementById("addField").onclick = ()=>{
-    const name = prompt("New field name?");
-    if (!name) return;
-
-    jsonData.fields[name] = {
-    posX: 100,
-    posY: 100,
-    fontSize: 18,
-    color: "#000000",
-    align: "default"
-    };
-
-    refreshFieldList();
-    fieldSelect.value = name;
-    fieldSelect.onchange();
-    };
-
-    // remove field
-
-    document.getElementById("removeField").onclick = ()=>{
-    if (!jsonData) return;
-
-    const key = fieldSelect.value;
-    if (!key) {
-    alert("No field selected");
-    return;
-    }
-
-    if (!confirm(`Delete field "${key}"?`)) return;
-
-    delete jsonData.fields[key];
-
-    refreshFieldList();
-
-    // Clear editor
-    fieldSelect.selectedIndex = -1;
-    f_name.value = "";
-    f_type.value = "";
-    f_value.value = "";
-    f_font.value = "";
-    f_size.value = "";
-    f_color.value = "#000000";
-    f_align.value = "default";
-    f_x.value = "";
-    f_y.value = "";
-    f_rotation.value = 0;
-
-    status.textContent = "Field removed ✔";
+    refreshChips();
 
     if (jsonData.values?.length) {
-    document.getElementById("previewBtn").click();
-    }
-    };
-    // ---------------- SHOW ALL VALUES ----------------
-    const valuesDialog = document.getElementById("valuesDialog");
-    const valuesTable = document.getElementById("valuesTable");
-
-    document.getElementById("showAllValues").onclick = ()=>{
-    if (!jsonData || !jsonData.values?.length) {
-    alert("No values available");
-    return;
+      const p = await buildPDF(jsonData.values[0]);
+      await renderPdfToCanvas(await p.save());
     }
 
-    valuesTable.innerHTML = "";
-
-    const keys = dynamicFieldKeys();
-
-    // Header
-    const thead = document.createElement("thead");
-    const hRow = document.createElement("tr");
-    hRow.innerHTML =
-    "<th>#</th>" + keys.map(k => `<th>${k}</th>`).join("");
-    thead.appendChild(hRow);
-
-    // Body
-    const tbody = document.createElement("tbody");
-
-    jsonData.values.forEach((row, i)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-    `<td>${i + 1}</td>` +
-    keys.map(k => `<td>${row[k] ?? ""}</td>`).join("");
-    tbody.appendChild(tr);
-    });
-
-    valuesTable.append(thead, tbody);
-
-    valuesDialog.showModal();
-    };
-
-    document.getElementById("closeValuesDialog").onclick = ()=>{
-    valuesDialog.close();
-    };
-
-    // ---------------- PRESET MANAGER ----------------
-    //SAVE PRESET
-    document.getElementById("exportPreset").onclick = async ()=>{
-    if (!templateBytes || !jsonData){
-    alert("Template PDF & config required");
-    return;
-    }
-
-    showPreviewOverlay("Exporting preset…");
-    await new Promise(r => setTimeout(r, 0));
-
-    try {
-    const zip = new JSZip();
-
-    // ---- Template
-    zip.file("template.pdf", templateBytes);
-
-    // ---- Config
-    zip.file("config.json", JSON.stringify(jsonData, null, 2));
-
-    // ---- Fonts (FIXED)
-    const fontsFolder = zip.folder("fonts");
-
-    for (const [name, buffer] of Object.entries(fontBuffers)) {
-    fontsFolder.file(`${name}.ttf`, buffer);
-    // 👆 extension does NOT matter for pdf-lib
-    }
-
-    const blob = await zip.generateAsync({ type: "blob" });
-    saveAs(blob, "preset.pep");
-
-    status.textContent = "Preset exported ✔";
-    } catch (e) {
-    console.error(e);
-    alert("Failed to export preset");
-    } finally {
-    hidePreviewOverlay();
-    }
-    };
-
-    //LOAD PRESET
-    document.getElementById("loadPresetBtn").onclick = ()=>{
-    document.getElementById("loadPreset").click();
-    };
-
-
-    // ---------------- PDF CORE ----------------
-    async function buildPDF(values){
-    const pdf = await PDFDocument.load(templateBytes);
-    pdf.registerFontkit(fontkit);
-
-    const page = pdf.getPages()[0];
-    const embeddedFonts = {};
-
-    for (const [key, f] of Object.entries(jsonData.fields)) {
-
-    /* ---------- FONT ---------- */
-    if (f.font && !embeddedFonts[f.font]) {
-    embeddedFonts[f.font] = await resolveFont(pdf, f.font);
-    }
-    const font = embeddedFonts[f.font] ||
-    await pdf.embedFont(StandardFonts.Helvetica);
-
-    /* ---------- TEXT SOURCE ---------- */
-    let text = "";
-
-    if (f.type === "static") {
-    text = f.value ?? "";
-    } else {
-    text = values[key] ?? "";
-    }
-
-    if (!text) continue;
-
-    /* ---------- POSITION ---------- */
-    const size = f.fontSize || 18;
-    let x = f.posX;
-    const w = font.widthOfTextAtSize(String(text), size);
-
-    if (f.align === "centered" || f.align === "centred") x -= w / 2;
-    if (f.align === "righted") x -= w;
-
-    /* ---------- DRAW ---------- */
-    page.drawText(String(text), {
-    x,
-    y: f.posY,
-    size,
-    font,
-    color: hex(f.color || "#000000"),
-    rotate: degrees(f.rotation || 0)
-    });
-    }
-
-    return pdf;
-    }
-
-    // ---------------- PREVIEW ----------------
-    document.getElementById("previewBtn").onclick = async ()=>{
-    if (!templateBytes || !jsonData){
-    alert("Upload template & JSON first");
-    return;
-    }
-
-    showPreviewOverlay("Rendering preview…");
-
-    // ⬇️ allow browser to paint overlay
-    await new Promise(r => setTimeout(r, 0));
-
-    try {
-    const pdf = await buildPDF(jsonData.values[0]);
-    const bytes = await pdf.save();
-    await renderPdfToCanvas(bytes);
-
-    status.textContent = "Preview ready ✔";
-    } catch (err) {
+    setStatus("Preset loaded: " + file.name, "ok");
+    toast("Preset loaded!", "success");
+  } catch (err) {
     console.error(err);
-    alert("Failed to render preview");
-    } finally {
-    hidePreviewOverlay();
-    }
-    };
-    // ---------------- ZIP ----------------
-    document.getElementById("zipBtn").onclick = async ()=>{
-    if (typeof JSZip === "undefined"){
-    alert("JSZip not loaded");
+    toast("Failed to load preset: " + err.message, "error");
+    setStatus("Preset load failed", "");
+  } finally { hideOverlay(); }
+};
+
+// ─── VALUES EDITOR ────────────────────────────────
+const valueSelect = document.getElementById("valueSelect");
+const valueInputs = document.getElementById("valueInputs");
+
+function dynamicFieldKeys() {
+  return Object.entries(jsonData.fields)
+    .filter(([_,f]) => f.type !== "static")
+    .map(([k]) => k);
+}
+
+function refreshValueList() {
+  valueSelect.innerHTML = "";
+  jsonData.values.forEach((_, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = `Entry ${i + 1}`;
+    valueSelect.appendChild(o);
+  });
+  refreshChips();
+}
+
+function loadValue(idx) {
+  valueInputs.innerHTML = "";
+  const row = jsonData.values[idx];
+  if (!row) return;
+  const keys = dynamicFieldKeys();
+  if (!keys.length) {
+    valueInputs.innerHTML = '<div class="empty-state"><i class="fa-solid fa-sliders"></i>No dynamic fields defined</div>';
     return;
-    }
-    status.textContent = "Generating ZIP…";
+  }
 
-    const zip = new JSZip();
-    let i = 1;
+  // Use a grid layout for many fields
+  const grid = document.createElement("div");
+  grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;";
 
-    for (const v of jsonData.values){
-    const pdf = await buildPDF(v);
-    zip.file(`${v.name || "file_"+i}.pdf`, await pdf.save());
-    i++;
-    }
+  for (const key of keys) {
+    const wrap = document.createElement("div");
+    wrap.className = "field";
+    const label = document.createElement("label");
+    label.className = "field-label";
+    label.textContent = key;
+    const input = document.createElement("input");
+    input.className = "input input-mono";
+    input.dataset.key = key;
+    input.value = row[key] || "";
+    wrap.append(label, input);
+    grid.appendChild(wrap);
+  }
+  valueInputs.appendChild(grid);
+}
 
-    saveAs(await zip.generateAsync({type: "blob"}), "certificates.zip");
-    status.textContent = "ZIP ready ✔";
-    };
-  </script>
+function loadSelectedValue() { loadValue(parseInt(valueSelect.value)); }
+valueSelect.addEventListener("change", loadSelectedValue);
+valueSelect.addEventListener("click", loadSelectedValue);
 
+document.getElementById("saveValue").onclick = () => {
+  const idx = valueSelect.value;
+  const obj = {};
+  valueInputs.querySelectorAll("input").forEach(inp => { obj[inp.dataset.key] = inp.value; });
+  jsonData.values[idx] = obj;
+  toast("Entry updated", "success");
+};
+
+document.getElementById("addValue").onclick = () => {
+  const obj = {};
+  dynamicFieldKeys().forEach(k => obj[k] = "");
+  jsonData.values.push(obj);
+  refreshValueList();
+  valueSelect.value = jsonData.values.length - 1;
+  loadValue(valueSelect.value);
+  toast("New entry added", "success");
+};
+
+document.getElementById("removeValue").onclick = () => {
+  if (!jsonData) return;
+  const idx = Number(valueSelect.value);
+  if (isNaN(idx)) return toast("No entry selected", "error");
+  if (!confirm(`Delete Entry ${idx + 1}?`)) return;
+  jsonData.values.splice(idx, 1);
+  if (!jsonData.values.length) jsonData.values.push({});
+  refreshValueList();
+  valueSelect.value = Math.max(0, idx - 1);
+  loadValue(valueSelect.value);
+  refreshChips();
+  toast("Entry removed", "success");
+};
+
+// ─── SHOW ALL VALUES ──────────────────────────────
+document.getElementById("showAllValues").onclick = () => {
+  if (!jsonData?.values?.length) return toast("No values available", "error");
+  const table = document.getElementById("valuesTable");
+  table.innerHTML = "";
+  const keys = dynamicFieldKeys();
+  const thead = document.createElement("thead");
+  const hRow = document.createElement("tr");
+  hRow.innerHTML = "<th>#</th>" + keys.map(k => `<th>${k}</th>`).join("");
+  thead.appendChild(hRow);
+  const tbody = document.createElement("tbody");
+  jsonData.values.forEach((row, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${i+1}</td>` + keys.map(k => `<td>${row[k] ?? ""}</td>`).join("");
+    tbody.appendChild(tr);
+  });
+  table.append(thead, tbody);
+  document.getElementById("valuesDialog").showModal();
+};
+
+document.getElementById("closeValuesDialog").onclick =
+document.getElementById("closeValuesDialog2").onclick = () =>
+  document.getElementById("valuesDialog").close();
+
+// ─── FIELD EDITOR (renders inside #fieldPropsArea) ─
+const fieldSelect    = document.getElementById("fieldSelect");
+const fieldPropsArea = document.getElementById("fieldPropsArea");
+
+function refreshFieldList() {
+  fieldSelect.innerHTML = "";
+  for (const k in jsonData.fields) {
+    const o = document.createElement("option");
+    o.value = o.textContent = k;
+    fieldSelect.appendChild(o);
+  }
+  refreshChips();
+}
+
+function renderFieldProps() {
+  fieldPropsArea.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+      <div class="field" style="grid-column:span 2">
+        <label class="field-label">Field Name</label>
+        <input class="input" id="f_name" placeholder="e.g. name">
+      </div>
+      <div class="field">
+        <label class="field-label">Type</label>
+        <select class="select-ctrl" id="f_type">
+          <option value="">Dynamic</option>
+          <option value="static">Static</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Static Value</label>
+        <input class="input input-mono" id="f_value" placeholder="if type=static">
+      </div>
+      <div class="field" style="grid-column:span 2">
+        <label class="field-label">Font</label>
+        <select class="select-ctrl" id="f_font"></select>
+      </div>
+      <div class="field">
+        <label class="field-label">Font Size</label>
+        <input class="input input-mono" id="f_size" type="number" value="18">
+      </div>
+      <div class="field">
+        <label class="field-label">Color</label>
+        <input class="input" id="f_color" type="color" value="#000000">
+      </div>
+      <div class="field">
+        <label class="field-label">Alignment</label>
+        <select class="select-ctrl" id="f_align">
+          <option value="default">Default</option>
+          <option value="centered">Centered</option>
+          <option value="righted">Right-aligned</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Rotation °</label>
+        <input class="input input-mono" id="f_rotation" type="number" value="0" step="1">
+      </div>
+      <div class="field">
+        <label class="field-label">X Position</label>
+        <div style="display:flex;gap:4px">
+          <input class="input input-mono" id="f_x" type="number">
+          <button class="btn btn-ghost btn-sm btn-icon" id="snapX" title="Snap to page mid-X"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Y Position</label>
+        <div style="display:flex;gap:4px">
+          <input class="input input-mono" id="f_y" type="number">
+          <button class="btn btn-ghost btn-sm btn-icon" id="snapY" title="Snap to page mid-Y"><i class="fa-solid fa-arrows-up-down-to-line"></i></button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // re-populate font list in the newly rendered select
+  refreshFontList();
+
+  // Snap buttons
+  document.getElementById("snapX").onclick = () => {
+    if (!pageWidth) return toast("Load template first", "error");
+    document.getElementById("f_x").value = Math.round(pageWidth / 2);
+  };
+  document.getElementById("snapY").onclick = () => {
+    if (!pageHeight) return toast("Load template first", "error");
+    document.getElementById("f_y").value = Math.round(pageHeight / 2);
+  };
+}
+
+function loadSelectedField() {
+  const f = jsonData.fields[fieldSelect.value];
+  if (!f) return;
+  document.getElementById("f_name").value     = fieldSelect.value;
+  document.getElementById("f_type").value     = f.type     || "";
+  document.getElementById("f_value").value    = f.value    || "";
+  document.getElementById("f_font").value     = f.font     || "";
+  document.getElementById("f_size").value     = f.fontSize || 18;
+  document.getElementById("f_color").value    = f.color    || "#000000";
+  document.getElementById("f_align").value    = f.align    || "default";
+  document.getElementById("f_x").value        = f.posX;
+  document.getElementById("f_y").value        = f.posY;
+  document.getElementById("f_rotation").value = f.rotation ?? 0;
+}
+
+fieldSelect.addEventListener("change", loadSelectedField);
+fieldSelect.addEventListener("click",  loadSelectedField);
+
+document.getElementById("saveField").onclick = () => {
+  const name = document.getElementById("f_name")?.value?.trim();
+  if (!name) return toast("Field name required", "error");
+  jsonData.fields[name] = {
+    type:     document.getElementById("f_type").value     || undefined,
+    value:    document.getElementById("f_value").value    || undefined,
+    font:     document.getElementById("f_font").value     || undefined,
+    fontSize: +document.getElementById("f_size").value,
+    color:    document.getElementById("f_color").value,
+    align:    document.getElementById("f_align").value,
+    posX:     +document.getElementById("f_x").value,
+    posY:     +document.getElementById("f_y").value,
+    rotation: +document.getElementById("f_rotation").value || 0
+  };
+  refreshFieldList();
+  fieldSelect.value = name;
+  refreshChips();
+  toast("Field saved", "success");
+  if (templateBytes) document.getElementById("previewBtn").click();
+};
+
+document.getElementById("addField").onclick = () => {
+  const name = prompt("New field name?");
+  if (!name) return;
+  jsonData.fields[name] = { posX: 100, posY: 100, fontSize: 18, color: "#000000", align: "default" };
+  refreshFieldList();
+  fieldSelect.value = name;
+  loadSelectedField();
+  refreshChips();
+};
+
+document.getElementById("removeField").onclick = () => {
+  const key = fieldSelect.value;
+  if (!key) return toast("No field selected", "error");
+  if (!confirm(`Delete field "${key}"?`)) return;
+  delete jsonData.fields[key];
+  refreshFieldList();
+  fieldPropsArea.innerHTML = "";
+  renderFieldProps();
+  refreshChips();
+  toast("Field removed", "success");
+};
+
+// ─── INIT ─────────────────────────────────────────
+// Render field props panel initially
+renderFieldProps();
+refreshChips();
+setStatus("Idle — no files loaded", "");
+
+// Keyboard shortcut Ctrl+P → Preview
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+    e.preventDefault();
+    document.getElementById("previewBtn").click();
+  }
+});
+</script>
 </body>
 </html>
